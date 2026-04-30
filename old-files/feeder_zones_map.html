@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>School District Feeder Zones</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+  <!-- Delaunator: tiny, fast Delaunay triangulation (18 kB, no dependencies) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/delaunator/5.0.0/delaunator.min.js"></script>
+
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #181c27;
+      --border: #2a2f3f;
+      --text: #e8eaf0;
+      --muted: #6b7280;
+      --accent: #f0f4ff;
+      --elem:   #34d399;
+      --middle: #60a5fa;
+      --k8:     #f472b6;
+      --high:   #fb923c;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Mono', monospace;
+      background: var(--bg); color: var(--text);
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px; background: var(--panel);
+      border-bottom: 1px solid var(--border); flex-shrink: 0; gap: 16px; flex-wrap: wrap;
+    }
+    .header-title {
+      font-family: 'Syne', sans-serif; font-size: 1.15rem; font-weight: 800;
+      letter-spacing: 0.02em; color: var(--accent); white-space: nowrap;
+    }
+    .header-title span { color: var(--muted); font-weight: 700; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .toggle-btn {
+      display: flex; align-items: center; gap: 7px; padding: 6px 14px;
+      border-radius: 4px; border: 1px solid var(--border); background: var(--bg);
+      color: var(--muted); font-family: 'DM Mono', monospace; font-size: 0.72rem;
+      font-weight: 500; cursor: pointer; transition: all 0.18s ease;
+      user-select: none; letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .toggle-btn .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+    .toggle-btn[data-type="ELEM"]   .dot { background: var(--elem); }
+    .toggle-btn[data-type="MIDDLE"] .dot { background: var(--middle); }
+    .toggle-btn[data-type="K8"]     .dot { background: var(--k8); }
+    .toggle-btn[data-type="HIGH"]   .dot { background: var(--high); }
+    .toggle-btn.active { color: var(--text); border-color: currentColor; }
+    .toggle-btn[data-type="ELEM"].active   { color: var(--elem);   border-color: var(--elem); }
+    .toggle-btn[data-type="MIDDLE"].active { color: var(--middle); border-color: var(--middle); }
+    .toggle-btn[data-type="K8"].active     { color: var(--k8);     border-color: var(--k8); }
+    .toggle-btn[data-type="HIGH"].active   { color: var(--high);   border-color: var(--high); }
+
+    /* Alpha slider */
+    .alpha-control {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 0.7rem; color: var(--muted); letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .alpha-control input[type=range] {
+      -webkit-appearance: none; appearance: none;
+      width: 90px; height: 3px; border-radius: 2px;
+      background: var(--border); outline: none; cursor: pointer;
+    }
+    .alpha-control input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none;
+      width: 13px; height: 13px; border-radius: 50%;
+      background: var(--accent); border: 2px solid var(--bg); cursor: pointer;
+    }
+    #alpha-val { color: var(--accent); min-width: 3ch; }
+
+    #map { flex: 1; width: 100%; }
+
+    .leaflet-popup-content-wrapper {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-family: 'DM Mono', monospace; font-size: 0.8rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .leaflet-popup-tip { background: var(--panel); }
+    .leaflet-popup-content { margin: 12px 16px; line-height: 1.6; }
+    .popup-name { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; }
+    .popup-meta { font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+    .leaflet-control-attribution {
+      background: rgba(15,17,23,0.85) !important; color: var(--muted) !important;
+      font-family: 'DM Mono', monospace !important; font-size: 0.6rem !important;
+    }
+    .leaflet-control-attribution a { color: var(--muted) !important; }
+    .leaflet-control-zoom a { background: var(--panel) !important; color: var(--text) !important; border-color: var(--border) !important; }
+    .leaflet-control-zoom a:hover { background: var(--border) !important; }
+
+    #legend {
+      position: absolute; bottom: 32px; right: 12px; z-index: 1000;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+      padding: 12px 16px; font-size: 0.7rem; letter-spacing: 0.05em; line-height: 2; pointer-events: none;
+    }
+    #legend .legend-title {
+      font-family: 'Syne', sans-serif; font-size: 0.75rem; font-weight: 800;
+      color: var(--accent); margin-bottom: 6px; letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .legend-row { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+    .legend-swatch { width: 22px; height: 10px; border-radius: 2px; flex-shrink: 0; opacity: 0.7; border: 1px solid; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">School District <span>/ Feeder Zones</span></div>
+  <div class="controls">
+    <button class="toggle-btn active" data-type="ELEM"><span class="dot"></span> Elementary</button>
+    <button class="toggle-btn active" data-type="MIDDLE"><span class="dot"></span> Middle</button>
+    <button class="toggle-btn active" data-type="K8"><span class="dot"></span> K-8</button>
+    <button class="toggle-btn active" data-type="HIGH"><span class="dot"></span> High School</button>
+    <div class="alpha-control">
+      <span>Hull tightness</span>
+      <input type="range" id="alpha-slider" min="0.005" max="0.15" step="0.005" value="0.04" />
+      <span id="alpha-val">0.04</span>
+    </div>
+  </div>
+</header>
+
+<div id="map"></div>
+
+<div id="legend">
+  <div class="legend-title">School Type</div>
+  <div class="legend-row"><span class="legend-swatch" style="background:var(--elem);  border-color:var(--elem)"></span>  Elementary</div>
+  <div class="legend-row"><span class="legend-swatch" style="background:var(--middle);border-color:var(--middle)"></span> Middle</div>
+  <div class="legend-row"><span class="legend-swatch" style="background:var(--k8);    border-color:var(--k8)"></span>    K-8</div>
+  <div class="legend-row"><span class="legend-swatch" style="background:var(--high);  border-color:var(--high)"></span>  High School</div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+//  CONFIG
+// ─────────────────────────────────────────────────────────────────
+const COLORS = { ELEM:'#34d399', MIDDLE:'#60a5fa', K8:'#f472b6', HIGH:'#fb923c' };
+const TYPE_LABELS = { ELEM:'Elementary', MIDDLE:'Middle School', K8:'K-8', HIGH:'High School' };
+
+// Alpha controls how tightly the hull wraps around the points.
+// Smaller = tighter (but may fragment into multiple pieces).
+// Larger  = looser (approaches convex hull).
+// Exposed as the slider in the header; also set DEFAULT_ALPHA here.
+const DEFAULT_ALPHA = 0.04;
+
+// ─────────────────────────────────────────────────────────────────
+//  MAP
+// ─────────────────────────────────────────────────────────────────
+const map = L.map('map', { center:[40.44,-79.99], zoom:11 });
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+  subdomains:'abcd', maxZoom:19,
+}).addTo(map);
+
+const layerGroups = {};
+for (const t of ['ELEM','MIDDLE','K8','HIGH'])
+  layerGroups[t] = L.layerGroup().addTo(map);
+
+// ─────────────────────────────────────────────────────────────────
+//  ALPHA SHAPE (concave hull) via Delaunay triangulation
+//
+//  Algorithm:
+//   1. Run Delaunay triangulation on the point set.
+//   2. For each triangle, compute its circumradius.
+//   3. Discard triangles whose circumradius > 1/alpha
+//      (large circumradius = "stretched" triangle straddling a gap).
+//   4. Collect all edges that appear in exactly ONE surviving triangle
+//      (boundary edges).
+//   5. Walk boundary edges into ordered rings → polygon coordinates.
+//
+//  Points are in geographic degrees; we normalise to a local
+//  Cartesian frame before triangulating so distances make sense.
+// ─────────────────────────────────────────────────────────────────
+
+function circumradius(ax, ay, bx, by, cx, cy) {
+  const dx = bx - ax, dy = by - ay;
+  const ex = cx - ax, ey = cy - ay;
+  const bl = dx*dx + dy*dy;
+  const cl = ex*ex + ey*ey;
+  const denom = 2 * (dx*ey - dy*ex);
+  if (Math.abs(denom) < 1e-10) return Infinity; // collinear
+  const ux = (ey*bl - dy*cl) / denom;
+  const uy = (dx*cl - ex*bl) / denom;
+  return Math.sqrt(ux*ux + uy*uy);
+}
+
+function alphaShape(points, alpha) {
+  // points = [[lng, lat], ...]
+  if (points.length < 3) return null;
+
+  // Deduplicate (identical coordinates break Delaunator)
+  const seen = new Set();
+  const unique = points.filter(([x,y]) => {
+    const k = `${x.toFixed(8)},${y.toFixed(8)}`;
+    if (seen.has(k)) return false;
+    seen.add(k); return true;
+  });
+  if (unique.length < 3) return null;
+
+  // Normalise to local Cartesian (approx, good enough for a city)
+  const lat0 = unique.reduce((s,p) => s + p[1], 0) / unique.length;
+  const cosLat = Math.cos(lat0 * Math.PI / 180);
+  // Scale so 1 unit ≈ 1 degree of latitude
+  const coords = unique.map(([lng, lat]) => [
+    (lng - unique[0][0]) * cosLat,
+    (lat - unique[0][1]),
+  ]);
+
+  // Flat array for Delaunator
+  const flat = new Float64Array(coords.length * 2);
+  coords.forEach(([x,y], i) => { flat[2*i]=x; flat[2*i+1]=y; });
+
+  let del;
+  try { del = new Delaunator(flat); } catch(e) { return null; }
+
+  const tris = del.triangles;
+  const threshold = 1 / alpha;
+
+  // Count how many surviving triangles each edge belongs to
+  // Edge key: "minIdx-maxIdx"
+  const edgeCount = new Map();
+  const addEdge = (a, b) => {
+    const k = a < b ? `${a},${b}` : `${b},${a}`;
+    edgeCount.set(k, (edgeCount.get(k) || 0) + 1);
+  };
+
+  for (let i = 0; i < tris.length; i += 3) {
+    const a = tris[i], b = tris[i+1], c = tris[i+2];
+    const [ax,ay] = coords[a], [bx,by] = coords[b], [cx,cy] = coords[c];
+    const r = circumradius(ax,ay,bx,by,cx,cy);
+    if (r < threshold) {
+      addEdge(a, b); addEdge(b, c); addEdge(c, a);
+    }
+  }
+
+  // Boundary edges appear exactly once
+  // Build adjacency list: for each node, which nodes does it connect to via a boundary edge?
+  const adj = new Map();
+  for (const [k, cnt] of edgeCount) {
+    if (cnt !== 1) continue;
+    const [a, b] = k.split(',').map(Number);
+    if (!adj.has(a)) adj.set(a, []);
+    if (!adj.has(b)) adj.set(b, []);
+    adj.get(a).push(b);
+    adj.get(b).push(a);
+  }
+
+  if (adj.size === 0) return null;
+
+  // Walk boundary edges into rings
+  const visited = new Set();
+  const rings = [];
+
+  for (const startNode of adj.keys()) {
+    if (visited.has(startNode)) continue;
+    const ring = [];
+    let cur = startNode;
+    let prev = -1;
+    while (true) {
+      visited.add(cur);
+      ring.push(unique[cur]); // back to [lng, lat]
+      const neighbors = (adj.get(cur) || []).filter(n => n !== prev && !visited.has(n));
+      if (neighbors.length === 0) break;
+      prev = cur;
+      cur = neighbors[0];
+    }
+    if (ring.length >= 3) rings.push(ring);
+  }
+
+  return rings.length > 0 ? rings : null;
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  DATA STORE  (kept for re-render when alpha changes)
+// ─────────────────────────────────────────────────────────────────
+let schoolData = {}; // school_id → { name, type, points }
+
+function loadFeederData(geojson) {
+  const features = Array.isArray(geojson) ? geojson : geojson.features;
+  schoolData = {};
+  for (const f of features) {
+    const { school_id, name, type } = f.properties;
+    const key = type?.toUpperCase();
+    if (!COLORS[key]) continue;
+    if (!schoolData[school_id]) schoolData[school_id] = { name, type:key, points:[] };
+    schoolData[school_id].points.push(f.geometry.coordinates);
+  }
+  renderAll(DEFAULT_ALPHA);
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  RENDER
+// ─────────────────────────────────────────────────────────────────
+function renderAll(alpha) {
+  // Clear all layers
+  for (const g of Object.values(layerGroups)) g.clearLayers();
+
+  for (const school of Object.values(schoolData)) {
+    const { name, type, points } = school;
+    const color = COLORS[type];
+    const popup = `
+      <div class="popup-name">${name}</div>
+      <div class="popup-meta">${TYPE_LABELS[type]}</div>
+      <div class="popup-meta">${points.length.toLocaleString()} addresses</div>
+    `;
+
+    if (points.length === 1) {
+      const [lng, lat] = points[0];
+      L.circleMarker([lat, lng], { radius:7, fillColor:color, color, weight:2, fillOpacity:0.85 })
+        .bindPopup(popup).addTo(layerGroups[type]);
+      continue;
+    }
+
+    if (points.length === 2) {
+      const latlngs = points.map(([lng, lat]) => [lat, lng]);
+      L.polyline(latlngs, { color, weight:2 }).bindPopup(popup).addTo(layerGroups[type]);
+      continue;
+    }
+
+    const rings = alphaShape(points, alpha);
+
+    if (!rings) {
+      // Alpha too tight — fall back to a small convex hull
+      addConvexFallback(points, color, popup, type);
+      continue;
+    }
+
+    // rings is an array of polygon rings [[lng,lat],...] (may be multiple disconnected pieces)
+    // Convert each ring to Leaflet [lat,lng] and render as a MultiPolygon-style layer group
+    const polyLatlngs = rings.map(ring => ring.map(([lng,lat]) => [lat,lng]));
+
+    // Render each ring as its own polygon so disconnected zones display correctly
+    for (const latlngs of polyLatlngs) {
+      const poly = L.polygon(latlngs, {
+        color, fillColor:color, weight:1.5, opacity:0.9, fillOpacity:0.18,
+      });
+      poly.bindPopup(popup);
+      poly.on('mouseover', function() { this.setStyle({ fillOpacity:0.4, weight:2.5 }); });
+      poly.on('mouseout',  function() { this.setStyle({ fillOpacity:0.18, weight:1.5 }); });
+      layerGroups[type].addLayer(poly);
+    }
+  }
+}
+
+function addConvexFallback(points, color, popup, type) {
+  // Simple convex hull fallback
+  function cross(O,A,B){ return (A[0]-O[0])*(B[1]-O[1])-(A[1]-O[1])*(B[0]-O[0]); }
+  const sorted = points.slice().sort((a,b)=>a[0]-b[0]||a[1]-b[1]);
+  const lower=[]; for(const p of sorted){ while(lower.length>=2&&cross(lower[lower.length-2],lower[lower.length-1],p)<=0)lower.pop(); lower.push(p); }
+  const upper=[]; for(let i=sorted.length-1;i>=0;i--){ const p=sorted[i]; while(upper.length>=2&&cross(upper[upper.length-2],upper[upper.length-1],p)<=0)upper.pop(); upper.push(p); }
+  upper.pop(); lower.pop();
+  const hull=lower.concat(upper);
+  const latlngs=hull.map(([lng,lat])=>[lat,lng]);
+  const poly=L.polygon(latlngs,{color,fillColor:color,weight:1.5,opacity:0.9,fillOpacity:0.18,dashArray:'4 4'});
+  poly.bindPopup(popup);
+  poly.on('mouseover',function(){this.setStyle({fillOpacity:0.4,weight:2.5});});
+  poly.on('mouseout', function(){this.setStyle({fillOpacity:0.18,weight:1.5});});
+  layerGroups[type].addLayer(poly);
+}
+
+// ─────────────────────────────────────────────────────────────────
+//  TOGGLE BUTTONS
+// ─────────────────────────────────────────────────────────────────
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const type = btn.dataset.type;
+    const active = btn.classList.toggle('active');
+    if (active) map.addLayer(layerGroups[type]);
+    else        map.removeLayer(layerGroups[type]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────
+//  ALPHA SLIDER  — re-renders on release (mouseup/touchend)
+//  Use 'input' for live preview if your dataset is small enough
+// ─────────────────────────────────────────────────────────────────
+const slider  = document.getElementById('alpha-slider');
+const alphaDisplay = document.getElementById('alpha-val');
+slider.value = DEFAULT_ALPHA;
+
+slider.addEventListener('input', () => {
+  alphaDisplay.textContent = parseFloat(slider.value).toFixed(3);
+});
+slider.addEventListener('change', () => {
+  const alpha = parseFloat(slider.value);
+  alphaDisplay.textContent = alpha.toFixed(3);
+  renderAll(alpha);
+});
+
+
+// ─────────────────────────────────────────────────────────────────
+//  LOAD FROM FILE (uncomment to use)
+// ─────────────────────────────────────────────────────────────────
+fetch('schools_points.geojson')
+  .then(r => r.json())
+  .then(data => loadFeederData(data));
+
+</script>
+</body>
+</html>

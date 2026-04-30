@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pittsburgh School Zones</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <style>
+    #map { height: 100vh; }
+  </style>
+</head>
+
+<body>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+// --------------------
+// 1. MAP INIT
+// --------------------
+const map = L.map('map').setView([40.44, -79.99], 12);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+
+// --------------------
+// 2. SCHOOL CONFIG
+// --------------------
+const SCHOOL_TYPES = {
+  K8: {
+    concave: "#2ecc71",
+    voronoi: "#3498db"
+  },
+  HIGH: {
+    concave: "#e74c3c",
+    voronoi: "#c0392b"
+  },
+  ELEMENTARY: {
+    concave: "#f39c12",
+    voronoi: "#e67e22"
+  },
+  MIDDLE: {
+    concave: "#5B5F97",
+    voronoi: "#4B4E80"
+  },
+  ONLINE: {
+    concave: "#16A085",
+    voronoi: "#117864"
+  }
+};
+
+// --------------------
+// 3. LAYER STRUCTURE
+// --------------------
+const layers = {};
+
+Object.keys(SCHOOL_TYPES).forEach(type => {
+  layers[type] = {
+    concave: L.layerGroup(),
+    voronoi: L.layerGroup()
+  };
+});
+
+// --------------------
+// 4. GENERIC LOADER
+// --------------------
+function loadGeoJSON(url, type, mode, style) {
+  return fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      const layer = L.geoJSON(data, {
+        style,
+        onEachFeature: (feature, layer) => {
+          const name = feature.properties?.name || "Unknown";
+          layer.bindPopup(`<b>${name}</b>`);
+        }
+      });
+
+      layer.addTo(layers[type][mode]);
+    })
+    .catch(err => console.error(`Error loading ${url}`, err));
+}
+
+// --------------------
+// 5. LOAD ALL ZONES
+// --------------------
+Object.entries(SCHOOL_TYPES).forEach(([type, colors]) => {
+
+  // Concave hull
+  loadGeoJSON(
+    `school-zones/${type}_zones_concave.geojson`,
+    type,
+    "concave",
+    {
+      color: colors.concave,
+      weight: 2,
+      fillOpacity: 0.25
+    }
+  );
+
+  // Voronoi
+  loadGeoJSON(
+    `school-zones/${type}_zones_voronoi.geojson`,
+    type,
+    "voronoi",
+    {
+      color: colors.voronoi,
+      weight: 2,
+      fillOpacity: 0.2,
+      dashArray: "4"
+    }
+  );
+});
+
+// --------------------
+// 6. ADD TO MAP + CONTROL
+// --------------------
+const overlayMaps = {};
+
+// Default visible + controls
+Object.entries(layers).forEach(([type, group]) => {
+
+  overlayMaps[`${type} (Concave)`] = group.concave;
+  overlayMaps[`${type} (Voronoi)`] = group.voronoi;
+
+  group.concave.addTo(map);
+});
+
+L.control.layers(null, overlayMaps, {
+  collapsed: false
+}).addTo(map);
+
+</script>
+
+</body>
+</html>

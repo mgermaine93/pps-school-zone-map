@@ -1,0 +1,2 @@
+id,address,lat,lng,school_count,schools,school_details,error
+819,"324 LAFAYETTE AVE, PITTSBURGH, PA 15214",40.4654685,-80.0068245,2,King PreK-8; Perry High School,"[{""name"": ""King PreK-8"", ""address"": ""50 MONTGOMERY PLACE PITTSBURGH PA 15212"", ""assignment"": ""Assigned school"", ""drive_time"": ""3 min"", ""drive_distance"": ""1 mi""}, {""name"": ""Perry High School"", ""address"": ""3875 PERRYSVILLE AVE PITTSBURGH PA 15214"", ""assignment"": ""Assigned school"", ""drive_time"": ""6 min"", ""drive_distance"": ""2.2 mi""}]",

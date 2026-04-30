@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pittsburgh School Zones</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div id="map"></div>
+<button id="toggleBtn">☰ Schools &amp; Filters</button>
+
+<div id="controls">
+  <h3>Pittsburgh Schools</h3>
+
+  <!-- ADDRESS SEARCH -->
+  <div class="filter-group">
+    <label>Search address</label>
+    <input type="text" id="searchInput" placeholder="e.g. 324 Lafayette Ave" autocomplete="off" />
+    <div id="searchResults"></div>
+    <div id="searchInfo"></div>
+  </div>
+
+  <hr class="divider">
+
+  <div class="filter-group">
+    <label>Filter by type</label>
+    <select id="typeFilter">
+      <option value="">All types</option>
+      <option value="K8">K8</option>
+      <option value="ELEM">Elementary</option>
+      <option value="MIDD">Middle</option>
+      <option value="HIGH">High School</option>
+      <option value="ONLINE">Online</option>
+    </select>
+  </div>
+
+  <div class="filter-group">
+    <label>Filter by school</label>
+    <select id="schoolFilter">
+      <option value="">All schools</option>
+    </select>
+  </div>
+
+  <div class="legend" id="legend"></div>
+  <div id="status"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="index.js"></script>
+</body>
+</html>
