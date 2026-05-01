@@ -14,6 +14,10 @@
 
 <div id="controls">
   <h3>Pittsburgh Schools</h3>
+  <div id="loader">
+    <div class="spinner"></div>
+    <p>Loading addresses…</p>
+  </div>
 
   <!-- ADDRESS SEARCH -->
   <div class="filter-group">
@@ -25,6 +29,17 @@
 
   <hr class="divider">
 
+  <!-- this menu determines which schools show up in the bottom part of the legend -->
+   <div class="filter-group">
+    <label>Color by</label>
+    <select id="colorBy">
+      <option value="ELEM">Elementary / K8</option>
+      <option value="MIDD">Middle</option>
+      <option value="HIGH">High School</option>
+    </select>
+  </div>
+
+  <!-- this menu determines the group of schools that show up on the map -->
   <div class="filter-group">
     <label>Filter by type</label>
     <select id="typeFilter">
@@ -37,6 +52,7 @@
     </select>
   </div>
 
+  <!-- this menu maps a single school onto the map -->
   <div class="filter-group">
     <label>Filter by school</label>
     <select id="schoolFilter">
@@ -46,6 +62,39 @@
 
   <div class="legend" id="legend"></div>
   <div id="status"></div>
+
+  <button id="aboutBtn">ℹ️ About this project</button>
+
+</div>
+
+<div id="aboutModal" class="modal-overlay">
+  <div class="modal-box">
+    <button class="modal-close" id="modalClose">✕</button>
+    <h2>About This Project</h2>
+    <p>
+      This map visualizes Pittsburgh Public Schools (PPS) attendance zones,
+      showing which schools each residential address is assigned to across
+      elementary, middle, and high school levels.
+    </p>
+    <p>
+      Each dot represents a geocoded address in the PPS district. Colors
+      indicate the assigned school based on the currently selected
+      <strong>Color by</strong> dimension.
+    </p>
+    <h3>How to use</h3>
+    <ul>
+      <li><strong>Color by</strong> — switch between Elementary/K8, Middle, and High School coloring</li>
+      <li><strong>Filter by type</strong> — show only addresses zoned for a given school level</li>
+      <li><strong>Filter by school</strong> — highlight all addresses assigned to a specific school</li>
+      <li><strong>Search</strong> — type an address to zoom to it and see its school assignments</li>
+      <li><strong>Legend</strong> — click any school to isolate its addresses</li>
+    </ul>
+    <h3>Data</h3>
+    <p>
+      Address and school zone data sourced from Pittsburgh Public Schools.
+      Map tiles by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> contributors.
+    </p>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
