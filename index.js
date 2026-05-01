@@ -1,4 +1,12 @@
 // --------------------
+// SERVICE WORKER
+// --------------------
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .catch(err => console.warn('Service worker registration failed:', err));
+}
+
+// --------------------
 // MAP INIT
 // --------------------
 const map = L.map('map').setView([40.44, -79.99], 12);
