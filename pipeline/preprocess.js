@@ -1,7 +1,7 @@
 // preprocess.js — run with: node preprocess.js
 const fs = require('fs');
 
-const data = JSON.parse(fs.readFileSync('cleaned_new_pps_schools.json', 'utf8'));
+const data = JSON.parse(fs.readFileSync('data/cleaned_new_pps_schools.json', 'utf8'));
 
 const slim = data
   .filter(p => p.lat != null && p.lng != null && p.schools && p.schools.length > 0)
@@ -20,5 +20,5 @@ const slim = data
     // drops p.raw, p.error, p.school_count — not needed by the map
   }));
 
-fs.writeFileSync('addresses_slim.json', JSON.stringify(slim));
+fs.writeFileSync('data/addresses_slim.json', JSON.stringify(slim));
 console.log(`Done. ${slim.length} addresses written.`);
