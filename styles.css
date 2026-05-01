@@ -167,6 +167,7 @@ margin-top: 8px;
 
 #controls.open {
     transform: translateY(0);
+    padding-bottom: 72px;
 }
 
 /* Drag handle visual */

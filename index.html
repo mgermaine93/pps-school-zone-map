@@ -1,118 +1,139 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Pittsburgh School Zones</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-<div id="map"></div>
-<button id="toggleBtn">☰ Schools &amp; Filters</button>
+  <head>
+    <title>Pittsburgh Public School Zones</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+  <div id="map"></div>
+  <button id="toggleBtn">☰ Schools &amp; Filters</button>
 
-<div id="controls">
-  <h3>Pittsburgh Schools</h3>
-  <div id="loader">
-    <div class="spinner"></div>
-    <p>Loading addresses…</p>
+  <div id="controls">
+    <h3>Pittsburgh Public School Zones</h3>
+    <div id="loader">
+      <div class="spinner"></div>
+      <p>Loading addresses…</p>
+    </div>
+
+    <!-- ADDRESS SEARCH -->
+    <div class="filter-group">
+      <label>Search address</label>
+      <input type="text" id="searchInput" placeholder="Enter an address (e.g., 324 Lafayette Ave)" autocomplete="off" />
+      <div id="searchResults"></div>
+      <div id="searchInfo"></div>
+    </div>
+
+    <hr class="divider">
+
+    <!-- this menu determines which schools show up in the bottom part of the legend -->
+    <div class="filter-group">
+      <label>Color by</label>
+      <select id="colorBy">
+        <option value="ELEM">Elementary / K8</option>
+        <option value="MIDD">Middle</option>
+        <option value="HIGH">High School</option>
+      </select>
+    </div>
+
+    <!-- this menu determines the group of schools that show up on the map -->
+    <div class="filter-group">
+      <label>Filter by type</label>
+      <select id="typeFilter">
+        <option value="">All types</option>
+        <option value="K8">K8</option>
+        <option value="ELEM">Elementary</option>
+        <option value="MIDD">Middle</option>
+        <option value="HIGH">High School</option>
+        <option value="ONLINE">Online</option>
+      </select>
+    </div>
+
+    <!-- this menu maps a single school onto the map -->
+    <div class="filter-group">
+      <label>Filter by school</label>
+      <select id="schoolFilter">
+        <option value="">All schools</option>
+      </select>
+    </div>
+
+    <div class="legend" id="legend"></div>
+    <div id="status"></div>
+
+    <button id="aboutBtn">ℹ️ About this project</button>
+
   </div>
 
-  <!-- ADDRESS SEARCH -->
-  <div class="filter-group">
-    <label>Search address</label>
-    <input type="text" id="searchInput" placeholder="e.g. 324 Lafayette Ave" autocomplete="off" />
-    <div id="searchResults"></div>
-    <div id="searchInfo"></div>
+  <div id="aboutModal" class="modal-overlay">
+    <div class="modal-box">
+      <button class="modal-close" id="modalClose">✕</button>
+      <h2>About This Project</h2>
+      <p>
+        For residents of the City of Pittsburgh, determining which public schools a home address is assigned to can be confusing.
+      </p>
+      <p>
+        Attendance zones form a patchwork of irregular shapes, jagged boundaries, and even discontinuous areas. While <a href="https://data.wprdc.org/dataset/pittsburgh-public-schools-enrollment/resource/643511e3-e99a-4e2a-94a4-033ddb944e94" target="_blank" rel="noopener noreferrer">data</a>, <a href="https://www.wesa.fm/education/2018-10-22/strange-shapes-jagged-lines-the-patchwork-of-pittsburgh-school-zones" target="_blank" rel="noopener noreferrer">static maps</a>, and the district's <a href="https://app.guidek12.com/pittsburghpa/school_search/current/" target="_blank" rel="noopener noreferrer">school search portal</a> exist, there is no simple, interactive way to identify school assignments at the address level.
+      </p>
+      <p>
+        This tool fills that gap by visualizing Pittsburgh Public Schools (PPS) attendance zones and showing school assignments for each address across elementary, middle, and high school levels.
+      </p>
+      <p>
+        Each point represents a geocoded address within the PPS district. Colors indicate the assigned school for the selected grade level using the <strong>Color by</strong> option.
+      </p>
+      <p>
+        Ultimately, this project aims to make school boundary information more transparent and accessible for families, homebuyers, and community members.
+      </p>
+      <h3>How to use</h3>
+      <ul>
+        <li><strong>Click a point</strong> — view detailed school assignments for that specific address.</li>
+        <li><strong>Search address</strong> — type an address to zoom to it and see its school assignments.</li>
+        <li><strong>Color by</strong> — switch between Elementary/K8, Middle, and High School coloring.</li>
+        <li><strong>Filter by type</strong> — show only addresses zoned for a given school level.</li>
+        <li><strong>Filter by school</strong> — highlight all addresses assigned to a specific school.</li>
+        <li><strong>Legend</strong> — click a school name to highlight its assigned addresses.</li>
+      </ul>
+      <h3>Data</h3>
+      <ul>
+        <li>Citywide address data is sourced from <a href="https://openaddresses.io/" target="_blank" rel="noopener noreferrer">OpenAddresses.io</a>.</li>
+        <li>School zone data is sourced from PPS's <a href="https://app.guidek12.com/pittsburghpa/school_search/current/" target="_blank" rel="noopener noreferrer">School Search Tool</a>.</li>
+        <li>Map tiles by <a href="https://www.openstreetmap.org" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors.</li>
+      </ul>
+      <h3>Notes</h3>
+      <ul>
+        <li>
+          Magnet schools and programs (e.g., CAPA, Obama Academy of International Studies, Montessori PreK–5, etc.) are not tied to specific neighborhoods and are not included in this tool.
+        </li>
+        <li>
+          School districts outside of PPS are not included.
+        </li>
+        <li>
+          School assignments shown here reflect standard attendance boundaries and do not account for transfers, magnet placements, or other special enrollment cases.
+        </li>
+        <li>
+          Attendance boundaries may change over time; assignments shown here reflect the most recent available data.
+        </li>
+      </ul>
+      <h3>Disclaimer</h3>
+      <p>
+        Although this tool draws from official sources (e.g., the PPS portal), it is intended for exploratory and informational use and should not be considered an official source.
+      </p>
+      <p>
+        This tool was developed with the assistance of AI agentic coding tools, including 
+        <a href="https://code.claude.com/docs/en/overview" target="_blank" rel="noopener noreferrer">Claude Code</a>, as part of an experimental, educational hobby project.
+      </p>
+      <h3>About the Author</h3>
+      <p>
+        This project was designed and developed by <a href="https://www.linkedin.com/in/matthewgermaine/">Matt Germaine</a> as part of a personal project exploring geospatial data visualization and civic technology.  View the source on <a href="https://github.com/mgermaine93/pps-school-zone-map" target="_blank" rel="noopener noreferrer">GitHub</a>.
+      </p>
+      <p><em>Data last updated: April 2026.</em></p>
+    </div>
   </div>
 
-  <hr class="divider">
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="index.js"></script>
 
-  <!-- this menu determines which schools show up in the bottom part of the legend -->
-   <div class="filter-group">
-    <label>Color by</label>
-    <select id="colorBy">
-      <option value="ELEM">Elementary / K8</option>
-      <option value="MIDD">Middle</option>
-      <option value="HIGH">High School</option>
-    </select>
-  </div>
-
-  <!-- this menu determines the group of schools that show up on the map -->
-  <div class="filter-group">
-    <label>Filter by type</label>
-    <select id="typeFilter">
-      <option value="">All types</option>
-      <option value="K8">K8</option>
-      <option value="ELEM">Elementary</option>
-      <option value="MIDD">Middle</option>
-      <option value="HIGH">High School</option>
-      <option value="ONLINE">Online</option>
-    </select>
-  </div>
-
-  <!-- this menu maps a single school onto the map -->
-  <div class="filter-group">
-    <label>Filter by school</label>
-    <select id="schoolFilter">
-      <option value="">All schools</option>
-    </select>
-  </div>
-
-  <div class="legend" id="legend"></div>
-  <div id="status"></div>
-
-  <button id="aboutBtn">ℹ️ About this project</button>
-
-</div>
-
-<div id="aboutModal" class="modal-overlay">
-  <div class="modal-box">
-    <button class="modal-close" id="modalClose">✕</button>
-    <h2>About This Project</h2>
-    <p>
-      This map visualizes Pittsburgh Public Schools (PPS) attendance zones,
-      showing which schools each residential address is assigned to across
-      elementary, middle, and high school levels.
-    </p>
-    <p>
-      Each dot represents a geocoded address in the PPS district. Colors
-      indicate the assigned school based on the currently selected
-      <strong>Color by</strong> dimension.
-    </p>
-    <h3>How to use</h3>
-    <ul>
-      <li><strong>Color by</strong> — switch between Elementary/K8, Middle, and High School coloring</li>
-      <li><strong>Filter by type</strong> — show only addresses zoned for a given school level</li>
-      <li><strong>Filter by school</strong> — highlight all addresses assigned to a specific school</li>
-      <li><strong>Search</strong> — type an address to zoom to it and see its school assignments</li>
-      <li><strong>Legend</strong> — click any school to isolate its addresses</li>
-    </ul>
-    <h3>Notes</h3>
-    <ul>
-      <li>
-        Magnet schools and programs (e.g., CAPA, Obama Academy of International Studies, and Montessori PreK–5) are not tied to specific neighborhoods and are not included in this tool.
-      </li>
-      <li>
-        School districts outside of Pittsburgh Public Schools (PPS) are not included.
-      </li>
-    </ul>
-    <h3>Data</h3>
-    <ul>
-      <li>Citywide address data is sourced from <a href="https://openaddresses.io/" target="_blank">OpenAddresses.io</a>.</li>
-      <li>School zone data is sourced from the <a href="https://app.guidek12.com/pittsburghpa/school_search/current/" target="_blank">School Search Tool</a> provided by Pittsburgh Public Schools.</li>
-      <li>Map tiles by <a href="https://www.openstreetmap.org" target="_blank">OpenStreetMap</a> contributors.</li>
-    </ul>
-    <h3>Disclaimer</h3>
-    <p>
-      This tool was developed with the assistance of AI agentic coding systems, including 
-      <a href="https://code.claude.com/docs/en/overview">Claude Code</a>, as part of a experimental and educational hobby project.
-    </p>
-  </div>
-</div>
-
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="index.js"></script>
-</body>
+  </body>
 </html>
