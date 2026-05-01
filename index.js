@@ -11,10 +11,34 @@ if ('serviceWorker' in navigator) {
 // --------------------
 const map = L.map('map').setView([40.44, -79.99], 12);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  attribution: '&copy; OpenStreetMap contributors'
-}).addTo(map);
+const basemaps = {
+  osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }),
+  light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
+  }),
+  dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>'
+  }),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 17,
+    attribution: 'Tiles &copy; <a href="https://www.esri.com/">Esri</a>'
+  })
+};
+
+let currentBasemap = basemaps.osm;
+currentBasemap.addTo(map);
+
+document.getElementById('basemapSelect').addEventListener('change', e => {
+  map.removeLayer(currentBasemap);
+  currentBasemap = basemaps[e.target.value];
+  currentBasemap.addTo(map);
+  document.body.classList.toggle('dark-basemap', e.target.value === 'dark');
+});
 
 const renderer = L.canvas({ padding: 0.5 });
 const schoolColorMap = {};

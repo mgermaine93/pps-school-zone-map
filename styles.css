@@ -301,3 +301,77 @@ margin-top: 8px;
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ---- DARK BASEMAP MODE ---- */
+.dark-basemap #controls {
+  background: #1e1e1e;
+  color: #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.dark-basemap #controls h3 { color: #e0e0e0; }
+
+.dark-basemap .filter-group label { color: #aaa; }
+
+.dark-basemap .filter-group select,
+.dark-basemap .filter-group input,
+.dark-basemap #searchInput {
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border-color: #444;
+}
+
+.dark-basemap #searchResults {
+  background: #2a2a2a;
+  border-color: #444;
+}
+
+.dark-basemap .search-result-item {
+  color: #e0e0e0;
+  border-bottom-color: #333;
+}
+
+.dark-basemap .search-result-item:hover,
+.dark-basemap .search-result-item:active { background: #333; }
+
+.dark-basemap #searchInfo {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.dark-basemap #searchInfo .info-address { color: #e0e0e0; }
+.dark-basemap #searchInfo .school-type  { color: #888; }
+
+.dark-basemap .divider { border-top-color: #333; }
+
+.dark-basemap .legend-item { color: #e0e0e0; }
+
+.dark-basemap .legend-item:hover,
+.dark-basemap .legend-item:active { background: #333; }
+
+.dark-basemap #status { color: #777; }
+
+.dark-basemap #aboutBtn {
+  border-color: #444;
+  color: #aaa;
+}
+
+.dark-basemap #aboutBtn:hover { background: #333; }
+
+/* Mobile drag handle */
+.dark-basemap #controls::before { background: #444; }
+
+/* About modal */
+.dark-basemap .modal-box {
+  background: #1e1e1e;
+  color: #e0e0e0;
+}
+
+.dark-basemap .modal-box h2,
+.dark-basemap .modal-box h3 { color: #e0e0e0; }
+
+.dark-basemap .modal-box p,
+.dark-basemap .modal-box li { color: #aaa; }
+
+.dark-basemap .modal-close { color: #666; }
+.dark-basemap .modal-close:hover { color: #ccc; }

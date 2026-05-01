@@ -60,6 +60,19 @@
       </select>
     </div>
 
+    <hr class="divider">
+
+    <!-- map background selector -->
+    <div class="filter-group">
+      <label>Map style</label>
+      <select id="basemapSelect">
+        <option value="osm">Street (OpenStreetMap)</option>
+        <option value="light">Light (CartoDB)</option>
+        <option value="dark">Dark (CartoDB)</option>
+        <option value="satellite">Satellite (ESRI)</option>
+      </select>
+    </div>
+
     <div class="legend" id="legend"></div>
     <div id="status"></div>
 
@@ -90,6 +103,7 @@
       <ul>
         <li><strong>Click a point</strong> — view detailed school assignments for that specific address.</li>
         <li><strong>Search address</strong> — type an address to zoom to it and see its school assignments.</li>
+        <li><strong>Map style</strong> — choose from Street, Light, Dark, or Satellite backgrounds. Selecting Dark also switches the sidebar to a dark theme.</li>
         <li><strong>Color by</strong> — switch between Elementary/K8, Middle, and High School coloring.</li>
         <li><strong>Filter by type</strong> — show only addresses zoned for a given school level.</li>
         <li><strong>Filter by school</strong> — highlight all addresses assigned to a specific school.</li>
