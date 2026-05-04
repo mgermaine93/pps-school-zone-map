@@ -1,0 +1,330 @@
+[
+  {
+    "id": 42,
+    "name": "Allderdice High School",
+    "address": "2409 SHADY AVE, PITTSBURGH, PA 15217",
+    "type": "HIGH",
+    "lat": 40.42942,
+    "lng": -79.91937
+  },
+  {
+    "id": 1,
+    "name": "Arlington PreK-8",
+    "address": "800 RECTENWALD ST, PITTSBURGH, PA 15210",
+    "type": "K8",
+    "lat": 40.40858,
+    "lng": -79.97941
+  },
+  {
+    "id": 41,
+    "name": "Arsenal 6-8",
+    "address": "220 40TH STREET, PITTSBURGH, PA 15201",
+    "type": "MIDD",
+    "lat": 40.46799,
+    "lng": -79.96171
+  },
+  {
+    "id": 5,
+    "name": "Arsenal PreK-5",
+    "address": "215 39th St, PITTSBURGH, PA 15201",
+    "type": "ELEM",
+    "lat": 40.46712,
+    "lng": -79.96289
+  },
+  {
+    "id": 3,
+    "name": "Banksville K-5",
+    "address": "1001 CARNAHAN RD, PITTSBURGH, PA 15216",
+    "type": "ELEM",
+    "lat": 40.40724,
+    "lng": -80.03673
+  },
+  {
+    "id": 4,
+    "name": "Beechwood PreK-5",
+    "address": "810 ROCKLAND AVE, PITTSBURGH, PA 15216",
+    "type": "ELEM",
+    "lat": 40.41464,
+    "lng": -80.02056
+  },
+  {
+    "id": 49,
+    "name": "Brashear High School",
+    "address": "590 CRANE AVE, PITTSBURGH, PA 15216",
+    "type": "HIGH",
+    "lat": 40.41809,
+    "lng": -80.01823
+  },
+  {
+    "id": 6,
+    "name": "Brookline PreK-8",
+    "address": "500 WOODBOURNE AVE, PITTSBURGH, PA 15226",
+    "type": "K8",
+    "lat": 40.39397,
+    "lng": -80.02475
+  },
+  {
+    "id": 44,
+    "name": "Carrick High School",
+    "address": "125 PARKFIELD ST, PITTSBURGH, PA 15210",
+    "type": "HIGH",
+    "lat": 40.39082,
+    "lng": -79.98941
+  },
+  {
+    "id": 8,
+    "name": "Colfax K-8",
+    "address": "2332 BEECHWOOD BLVD, PITTSBURGH, PA 15217",
+    "type": "K8",
+    "lat": 40.43306,
+    "lng": -79.91537
+  },
+  {
+    "id": 9,
+    "name": "Concord K-5",
+    "address": "2350 BROWNSVILLE RD, PITTSBURGH, PA 15210",
+    "type": "ELEM",
+    "lat": 40.3874,
+    "lng": -79.98456
+  },
+  {
+    "id": 15,
+    "name": "Faison K-5",
+    "address": "7430 TIOGA ST, PITTSBURGH, PA 15208",
+    "type": "ELEM",
+    "lat": 40.4525,
+    "lng": -79.89407
+  },
+  {
+    "id": 10,
+    "name": "Fulton PreK-5",
+    "address": "5799 HAMPTON ST, PITTSBURGH, PA 15206",
+    "type": "ELEM",
+    "lat": 40.47495,
+    "lng": -79.92201
+  },
+  {
+    "id": 11,
+    "name": "Grandview PreK-5",
+    "address": "845 MCLAIN ST, PITTSBURGH, PA 15210",
+    "type": "ELEM",
+    "lat": 40.4245,
+    "lng": -79.99281
+  },
+  {
+    "id": 12,
+    "name": "Greenfield PreK-8",
+    "address": "1 ALGER ST, PITTSBURGH, PA 15207",
+    "type": "K8",
+    "lat": 40.42653,
+    "lng": -79.94467
+  },
+  {
+    "id": 34,
+    "name": "King PreK-8",
+    "address": "50 MONTGOMERY PLACE, PITTSBURGH, PA 15212",
+    "type": "K8",
+    "lat": 40.4548,
+    "lng": -80.00454
+  },
+  {
+    "id": 13,
+    "name": "Langley K-8",
+    "address": "2940 SHERADEN BLVD, PITTSBURGH, PA 15204",
+    "type": "K8",
+    "lat": 40.45454,
+    "lng": -80.05467
+  },
+  {
+    "id": 17,
+    "name": "Lincoln PreK-5",
+    "address": "328 LINCOLN AVE, PITTSBURGH, PA 15206",
+    "type": "ELEM",
+    "lat": 40.46006,
+    "lng": -79.91161
+  },
+  {
+    "id": 19,
+    "name": "Manchester PreK-8",
+    "address": "1612 MANHATTAN ST, PITTSBURGH, PA 15233",
+    "type": "K8",
+    "lat": 40.45645,
+    "lng": -80.02652
+  },
+  {
+    "id": 20,
+    "name": "Mifflin PreK-8",
+    "address": "1290 MIFFLIN RD, PITTSBURGH, PA 15207",
+    "type": "K8",
+    "lat": 40.37008,
+    "lng": -79.91473
+  },
+  {
+    "id": 21,
+    "name": "Miller PreK-5",
+    "address": "2055 BEDFORD AVE, PITTSBURGH, PA 15219",
+    "type": "ELEM",
+    "lat": 40.44733,
+    "lng": -79.98135
+  },
+  {
+    "id": 46,
+    "name": "Milliones 6-12",
+    "address": "3117 CENTRE AVE, PITTSBURGH, PA 15219",
+    "type": "HIGH",
+    "lat": 40.44981,
+    "lng": -79.96243
+  },
+  {
+    "id": 22,
+    "name": "Minadeo PreK-5",
+    "address": "6502 LILAC ST, PITTSBURGH, PA 15217",
+    "type": "ELEM",
+    "lat": 40.42343,
+    "lng": -79.92572
+  },
+  {
+    "id": 23,
+    "name": "Morrow PreK-8",
+    "address": "1611 DAVIS AVE, PITTSBURGH, PA 15212",
+    "type": "K8",
+    "lat": 40.48016,
+    "lng": -80.03983
+  },
+  {
+    "id": 93,
+    "name": "Online Academy",
+    "address": "93 S. 10th Street, PITTSBURGH, PA 15203",
+    "type": "ONLINE",
+    "lat": 40.42778,
+    "lng": -79.98844
+  },
+  {
+    "id": 48,
+    "name": "Perry High School",
+    "address": "3875 PERRYSVILLE AVE, PITTSBURGH, PA 15214",
+    "type": "HIGH",
+    "lat": 40.48917,
+    "lng": -80.01904
+  },
+  {
+    "id": 25,
+    "name": "Phillips K-5",
+    "address": "1901 SARAH ST, PITTSBURGH, PA 15203",
+    "type": "ELEM",
+    "lat": 40.42795,
+    "lng": -79.97827
+  },
+  {
+    "id": 26,
+    "name": "Roosevelt PreK-5",
+    "address": "17 W CHERRYHILL ST, PITTSBURGH, PA 15210",
+    "type": "ELEM",
+    "lat": 40.39782,
+    "lng": -79.98916
+  },
+  {
+    "id": 39,
+    "name": "Schiller 6-8",
+    "address": "1018 PERALTA ST, PITTSBURGH, PA 15212",
+    "type": "MIDD",
+    "lat": 40.45652,
+    "lng": -79.99306
+  },
+  {
+    "id": 38,
+    "name": "South Brook 6-8",
+    "address": "779 DUNSTER ST, PITTSBURGH, PA 15226",
+    "type": "MIDD",
+    "lat": 40.40346,
+    "lng": -80.00889
+  },
+  {
+    "id": 36,
+    "name": "South Hills 6-8",
+    "address": "595 CRANE AVE, PITTSBURGH, PA 15216",
+    "type": "MIDD",
+    "lat": 40.41947,
+    "lng": -80.01819
+  },
+  {
+    "id": 27,
+    "name": "Spring Hill K-5",
+    "address": "1351 DAMAS ST, PITTSBURGH, PA 15212",
+    "type": "ELEM",
+    "lat": 40.46522,
+    "lng": -79.98946
+  },
+  {
+    "id": 40,
+    "name": "Sterrett 6-8",
+    "address": "7100 REYNOLDS ST, PITTSBURGH, PA 15208",
+    "type": "MIDD",
+    "lat": 40.4466,
+    "lng": -79.9054
+  },
+  {
+    "id": 28,
+    "name": "Sunnyside PreK-8",
+    "address": "4801 STANTON AVE, PITTSBURGH, PA 15201",
+    "type": "K8",
+    "lat": 40.48157,
+    "lng": -79.93351
+  },
+  {
+    "id": 29,
+    "name": "Weil PreK-5",
+    "address": "2250 CENTRE AVE, PITTSBURGH, PA 15219",
+    "type": "ELEM",
+    "lat": 40.44454,
+    "lng": -79.974
+  },
+  {
+    "id": 30,
+    "name": "West Liberty PreK-5",
+    "address": "785 DUNSTER AVE, PITTSBURGH, PA 15226",
+    "type": "ELEM",
+    "lat": 40.40235,
+    "lng": -80.01
+  },
+  {
+    "id": 50,
+    "name": "Westinghouse Academy 6-12",
+    "address": "1101 NORTH MURTLAND STREET, PITTSBURGH, PA 15208",
+    "type": "HIGH",
+    "lat": 40.4605,
+    "lng": -79.90045
+  },
+  {
+    "id": 51,
+    "name": "Westinghouse Academy 7-12",
+    "address": "1101 NORTH MURTLAND STREET, PITTSBURGH, PA 15208",
+    "type": "HIGH",
+    "lat": 40.4605,
+    "lng": -79.90045
+  },
+  {
+    "id": 31,
+    "name": "Westwood K-5",
+    "address": "508 SHADYHILL RD, PITTSBURGH, PA 15205",
+    "type": "ELEM",
+    "lat": 40.43148,
+    "lng": -80.05056
+  },
+  {
+    "id": 32,
+    "name": "Whittier K-5",
+    "address": "150 MERIDAN ST, PITTSBURGH, PA 15211",
+    "type": "ELEM",
+    "lat": 40.43586,
+    "lng": -80.01896
+  },
+  {
+    "id": 33,
+    "name": "Woolslair PreK-5",
+    "address": "501 - 40TH ST, PITTSBURGH, PA 15224",
+    "type": "ELEM",
+    "lat": 40.46329,
+    "lng": -79.95705
+  }
+]

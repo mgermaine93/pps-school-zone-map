@@ -1,0 +1,18 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+  <!-- Pin body -->
+  <path d="M32 4 C20 4 12 13 12 23 C12 37 32 60 32 60 C32 60 52 37 52 23 C52 13 44 4 32 4 Z" fill="#e74c3c"/>
+  <!-- Pin inner circle -->
+  <circle cx="32" cy="23" r="11" fill="white"/>
+  <!-- Graduation cap diamond top -->
+  <polygon points="32,14 42,19 32,24 22,19" fill="#e74c3c"/>
+  <!-- Cap base/brim highlight -->
+  <polygon points="32,14 42,19 32,24 22,19" fill="none" stroke="white" stroke-width="0.5" opacity="0.4"/>
+  <!-- Cap body (cylinder) -->
+  <path d="M27 19.5 L27 24.5 C27 26.5 29.2 28 32 28 C34.8 28 37 26.5 37 24.5 L37 19.5 L32 22 Z" fill="#e74c3c"/>
+  <!-- Tassel string -->
+  <line x1="42" y1="19" x2="42" y2="25" stroke="#e74c3c" stroke-width="1.2"/>
+  <!-- Tassel end -->
+  <circle cx="42" cy="26" r="1.5" fill="#e74c3c"/>
+  <!-- Diamond shine line -->
+  <line x1="32" y1="15" x2="38" y2="18" stroke="white" stroke-width="0.7" opacity="0.5"/>
+</svg>

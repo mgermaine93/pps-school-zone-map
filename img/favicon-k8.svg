@@ -1,0 +1,20 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+  <!-- Pin body -->
+  <path d="M32 4 C20 4 12 13 12 23 C12 37 32 60 32 60 C32 60 52 37 52 23 C52 13 44 4 32 4 Z" fill="#e74c3c"/>
+  <!-- Pin inner circle -->
+  <circle cx="32" cy="23" r="11" fill="white"/>
+  <!-- Main building -->
+  <rect x="25" y="22" width="14" height="10" fill="#e74c3c"/>
+  <!-- Main roof -->
+  <polygon points="23,22 32,15 41,22" fill="#e74c3c"/>
+  <!-- Cupola -->
+  <rect x="30.5" y="13" width="3" height="2.5" fill="#e74c3c"/>
+  <!-- Small wing/addition (right) -->
+  <rect x="39" y="25" width="5" height="7" fill="#e74c3c"/>
+  <!-- Wing roof -->
+  <polygon points="38,25 41.5,21.5 45,25" fill="#e74c3c"/>
+  <!-- Main door -->
+  <rect x="30" y="26" width="4" height="6" fill="white"/>
+  <!-- Wing window -->
+  <rect x="40" y="26.5" width="3" height="2.5" fill="white"/>
+</svg>

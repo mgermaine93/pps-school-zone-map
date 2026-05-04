@@ -60,6 +60,20 @@
       </select>
     </div>
 
+    <!-- school location pins -->
+    <div class="filter-group">
+      <label>School location pins</label>
+      <select id="schoolPins">
+        <option value="">None</option>
+        <option value="ALL">All schools</option>
+        <option value="ELEM">Elementary</option>
+        <option value="K8">K-8</option>
+        <option value="MIDD">Middle</option>
+        <option value="HIGH">High School</option>
+        <option value="ONLINE">Online</option>
+      </select>
+    </div>
+
     <hr class="divider">
 
     <!-- map background selector -->
@@ -85,13 +99,13 @@
       <button class="modal-close" id="modalClose">✕</button>
       <h2>About This Project</h2>
       <p>
-        For residents of the City of Pittsburgh, determining which public schools a home address is assigned to can be confusing.
+        For Pittsburgh residents, figuring out which public schools a home address is assigned to is surprisingly difficult.
       </p>
       <p>
-        Attendance zones form a patchwork of irregular shapes, jagged boundaries, and even discontinuous areas. While <a href="https://data.wprdc.org/dataset/pittsburgh-public-schools-enrollment/resource/643511e3-e99a-4e2a-94a4-033ddb944e94" target="_blank" rel="noopener noreferrer">data</a>, <a href="https://www.wesa.fm/education/2018-10-22/strange-shapes-jagged-lines-the-patchwork-of-pittsburgh-school-zones" target="_blank" rel="noopener noreferrer">static maps</a>, and the district's <a href="https://app.guidek12.com/pittsburghpa/school_search/current/" target="_blank" rel="noopener noreferrer">school search portal</a> exist, there is no simple, interactive way to identify school assignments at the address level.
+        Attendance zones form a patchwork of irregular shapes, jagged boundaries, and even discontinuous areas. While <a href="https://data.wprdc.org/dataset/pittsburgh-public-schools-enrollment/resource/643511e3-e99a-4e2a-94a4-033ddb944e94" target="_blank" rel="noopener noreferrer">data</a>, <a href="https://www.wesa.fm/education/2018-10-22/strange-shapes-jagged-lines-the-patchwork-of-pittsburgh-school-zones" target="_blank" rel="noopener noreferrer">static maps</a>, and the district's <a href="https://app.guidek12.com/pittsburghpa/school_search/current/" target="_blank" rel="noopener noreferrer">school search portal</a> exist, there is no single, simple way to interactively look up school assignments at the address level.
       </p>
       <p>
-        This tool fills that gap by visualizing Pittsburgh Public Schools (PPS) attendance zones and showing school assignments for each address across elementary, middle, and high school levels.
+        This tool addresses that gap by visualizing Pittsburgh Public Schools (PPS) attendance zones and showing school assignments for each address across elementary, middle, and high school levels.
       </p>
       <p>
         Each point represents a geocoded address within the PPS district. Colors indicate the assigned school for the selected grade level using the <strong>Color by</strong> option.
@@ -132,7 +146,7 @@
       </ul>
       <h3>Disclaimer</h3>
       <p>
-        Although this tool draws from official sources (e.g., the PPS portal), it is intended for exploratory and informational use and should not be considered an official source.
+        This tool draws from official sources (e.g., the PPS portal), but is intended for informational use and should not be considered an official PPS source.
       </p>
       <p>
         This tool was developed with the assistance of AI agentic coding tools, including 
@@ -140,7 +154,7 @@
       </p>
       <h3>About the Author</h3>
       <p>
-        This project was designed and developed by <a href="https://www.linkedin.com/in/matthewgermaine/">Matt Germaine</a> as part of a personal project exploring geospatial data visualization and civic technology.  View the source on <a href="https://github.com/mgermaine93/pps-school-zone-map" target="_blank" rel="noopener noreferrer">GitHub</a>.
+        This project was designed and developed by <a href="https://www.linkedin.com/in/matthewgermaine/">Matt Germaine</a> as a personal exploration of geospatial data visualization and civic technology.  View the source code on <a href="https://github.com/mgermaine93/pps-school-zone-map" target="_blank" rel="noopener noreferrer">GitHub</a>.
       </p>
       <p><em>Data last updated: April 2026.</em></p>
     </div>

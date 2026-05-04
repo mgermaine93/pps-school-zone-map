@@ -73,6 +73,26 @@ function getSchoolColor(schoolName, type) {
 }
 
 // --------------------
+// SCHOOL ICONS
+// --------------------
+const SCHOOL_ICONS = {
+  ELEM:   'img/favicon-elementary.svg',
+  K8:     'img/favicon-k8.svg',
+  MIDD:   'img/favicon-middle.svg',
+  HIGH:   'img/favicon-highschool.svg',
+  ONLINE: 'img/favicon-online.svg',
+};
+
+function schoolIcon(type) {
+  return L.icon({
+    iconUrl:     SCHOOL_ICONS[type] || SCHOOL_ICONS.ELEM,
+    iconSize:    [48, 48],
+    iconAnchor:  [24, 48],
+    popupAnchor: [0, -48],
+  });
+}
+
+// --------------------
 // PRIMARY SCHOOL LOGIC
 // --------------------
 const TYPE_PRIORITY = ['ELEM', 'K8', 'MIDD', 'HIGH', 'ONLINE'];
@@ -96,11 +116,24 @@ let allAddresses = [];   // raw data kept for search
 let currentTypeFilter = '';
 let currentSchoolFilter = '';
 let searchMarker = null;
+let schoolMarkers = [];
+let allSchoolMarkers = [];
+let filterSchoolMarker = null;
+let schoolsByName = {};
 let currentColorBy = "ELEM";
 
 // --------------------
 // LOAD DATA
 // --------------------
+fetch('data/schools.json')
+  .then(res => res.json())
+  .then(schools => {
+    schools.forEach(s => {
+      if (s.lat != null) schoolsByName[s.name] = s;
+    });
+  })
+  .catch(() => {});  // non-critical — address search still works without it
+
 fetch('data/addresses_slim.json')
   .then(res => res.json())
   .then(addresses => {
@@ -225,15 +258,12 @@ document.getElementById('colorBy').addEventListener('change', e => {
 });
 
 function selectAddress(point) {
-  // Update input and hide dropdown
   searchInput.value = point.address;
   searchResults.style.display = 'none';
 
-  // Zoom to address
-  map.setView([point.lat, point.lng], 16);
-
-  // Place a highlight marker
+  // Place address highlight marker
   clearSearchMarker();
+  clearSchoolMarkers();
   searchMarker = L.circleMarker([point.lat, point.lng], {
     radius: 10,
     color: '#ffffff',
@@ -241,6 +271,30 @@ function selectAddress(point) {
     fillColor: '#ff4444',
     fillOpacity: 1
   }).addTo(map);
+
+  // Place a marker at each assigned school's physical location
+  const boundsPoints = [[point.lat, point.lng]];
+  point.schools.forEach(s => {
+    const school = schoolsByName[s.name];
+    if (!school) return;
+    const marker = L.marker([school.lat, school.lng], {
+      icon: schoolIcon(s.type)
+    }).addTo(map);
+    marker.bindPopup(`
+      <b>${school.name}</b><br>
+      <span style="color:#888;font-size:12px">${school.type}</span><br>
+      <small style="color:#666">${school.address}</small>
+    `);
+    schoolMarkers.push(marker);
+    boundsPoints.push([school.lat, school.lng]);
+  });
+
+  // Fit map to show the searched address and all school markers
+  if (boundsPoints.length > 1) {
+    map.fitBounds(L.latLngBounds(boundsPoints).pad(0.2));
+  } else {
+    map.setView([point.lat, point.lng], 16);
+  }
 
   // Show school info panel
   const schoolItems = point.schools
@@ -261,13 +315,48 @@ function clearSearchMarker() {
   }
 }
 
-// Clear search marker if user clears the input
+function clearSchoolMarkers() {
+  schoolMarkers.forEach(m => map.removeLayer(m));
+  schoolMarkers = [];
+}
+
+function clearFilterSchoolMarker() {
+  if (filterSchoolMarker) {
+    map.removeLayer(filterSchoolMarker);
+    filterSchoolMarker = null;
+  }
+}
+
+function updateSchoolPins(typeFilter) {
+  allSchoolMarkers.forEach(m => map.removeLayer(m));
+  allSchoolMarkers = [];
+  if (!typeFilter) return;
+  Object.values(schoolsByName).forEach(school => {
+    if (typeFilter !== 'ALL' && school.type !== typeFilter) return;
+    const marker = L.marker([school.lat, school.lng], {
+      icon: schoolIcon(school.type)
+    }).addTo(map);
+    marker.bindPopup(`
+      <b>${school.name}</b><br>
+      <span style="color:#888;font-size:12px">${school.type}</span><br>
+      <small style="color:#666">${school.address}</small>
+    `);
+    allSchoolMarkers.push(marker);
+  });
+}
+
+document.getElementById('schoolPins').addEventListener('change', e => {
+  updateSchoolPins(e.target.value);
+});
+
+// Clear markers when user dismisses the search
 searchInput.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     searchInput.value = '';
     searchResults.style.display = 'none';
     searchInfo.style.display = 'none';
     clearSearchMarker();
+    clearSchoolMarkers();
   }
 });
 
@@ -406,6 +495,19 @@ function applyFilters() {
     const active = !currentSchoolFilter || name === currentSchoolFilter;
     item.classList.toggle('dimmed', !active);
   });
+
+  clearFilterSchoolMarker();
+  if (currentSchoolFilter && schoolsByName[currentSchoolFilter]) {
+    const school = schoolsByName[currentSchoolFilter];
+    filterSchoolMarker = L.marker([school.lat, school.lng], {
+      icon: schoolIcon(school.type)
+    }).addTo(map);
+    filterSchoolMarker.bindPopup(`
+      <b>${school.name}</b><br>
+      <span style="color:#888;font-size:12px">${school.type}</span><br>
+      <small style="color:#666">${school.address}</small>
+    `);
+  }
 
   updateStatus();
 }

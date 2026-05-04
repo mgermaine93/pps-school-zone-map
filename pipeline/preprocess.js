@@ -21,4 +21,32 @@ const slim = data
   }));
 
 fs.writeFileSync('data/addresses_slim.json', JSON.stringify(slim));
-console.log(`Done. ${slim.length} addresses written.`);
+
+// Build address → coords lookup so school pins use the same coordinates
+// as the dot already plotted for that address, not a separate Nominatim result
+const addressCoords = new Map();
+data.forEach(p => {
+  if (p.lat != null && p.lng != null && p.address) {
+    addressCoords.set(p.address, {
+      lat: Math.round(p.lat * 1e5) / 1e5,
+      lng: Math.round(p.lng * 1e5) / 1e5
+    });
+  }
+});
+
+// Extract unique schools (id → object) for geocoding
+const schoolsMap = new Map();
+data.forEach(p => {
+  (p.schools || []).forEach(s => {
+    if (s.id != null && !schoolsMap.has(s.id)) {
+      const school = { id: s.id, name: s.name, address: s.address, type: s.type };
+      const coords = s.address && addressCoords.get(s.address);
+      if (coords) { school.lat = coords.lat; school.lng = coords.lng; }
+      schoolsMap.set(s.id, school);
+    }
+  });
+});
+const schools = [...schoolsMap.values()].sort((a, b) => a.name.localeCompare(b.name));
+fs.writeFileSync('data/schools.json', JSON.stringify(schools, null, 2));
+
+console.log(`Done. ${slim.length} addresses and ${schools.length} schools written.`);
