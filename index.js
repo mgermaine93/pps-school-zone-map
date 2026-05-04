@@ -98,7 +98,6 @@ function schoolIcon(type) {
 const TYPE_PRIORITY = ['ELEM', 'K8', 'MIDD', 'HIGH', 'ONLINE'];
 
 function getPrimarySchool(schools) {
-  // console.log(schools)
   for (const type of TYPE_PRIORITY) {
     const match = schools.find(s =>
       s.type === type && s.zones.includes('attendance')
@@ -512,7 +511,7 @@ function applyFilters() {
   updateStatus();
 }
 
-function toggleSchoolFromLegend(name, item) {
+function toggleSchoolFromLegend(name) {
   currentSchoolFilter = currentSchoolFilter === name ? '' : name;
   currentTypeFilter = '';
   document.getElementById('typeFilter').value = '';
@@ -534,11 +533,10 @@ function recolor() {
   });
 
   allMarkers.forEach(({ marker, point }) => {
-    const primary = getPrimarySchool(point.schools, currentColorBy);
-    const color = getSchoolColor(primary.name, primary.type).color;  // ← .color
+    const primary = getPrimarySchool(point.schools);
+    const color = getSchoolColor(primary.name, primary.type).color;
 
     marker.setStyle({ color, fillColor: color });
-    marker._primary = primary;
     marker._primaryColor = color;
 
     marker._colorByType = {};
@@ -547,7 +545,7 @@ function recolor() {
         s.type === type && s.zones.includes('attendance')
       );
       marker._colorByType[type] = match
-        ? getSchoolColor(match.name, match.type).color  // ← .color
+        ? getSchoolColor(match.name, match.type).color
         : null;
     });
   });
