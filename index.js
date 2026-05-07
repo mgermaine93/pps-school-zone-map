@@ -186,7 +186,7 @@ function getPrimarySchool(schools) {
     );
     if (match) return match;
   }
-  return schools[0];
+  return schools[0] ?? null;
 }
 
 // --------------------
@@ -920,6 +920,7 @@ function recolor() {
 
   allMarkers.forEach(({ marker, point }) => {
     const primary = getPrimarySchool(point.schools);
+    if (!primary) return;
     const color = getSchoolColor(primary.name, primary.type).color;
 
     marker.setStyle({ color, fillColor: color });

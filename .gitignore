@@ -1,3 +1,7 @@
 venv/
-old-files/
 logs/
+.DS_Store
+data/addresses_full.json
+backups/
+__pycache__/
+tests/js/node_modules/

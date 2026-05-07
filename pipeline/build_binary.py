@@ -36,6 +36,35 @@ from pathlib import Path
 
 
 def build(input_path: str, output_path: str) -> None:
+    """
+    Reads addresses_slim.json and encodes it into the PPSb binary format.
+
+    Uses a two-pass approach: the first pass scans all address records to build
+    compact lookup tables for school types and zone strings (each string appears
+    once and is referenced by a single-byte index thereafter).  The second pass
+    writes the 12-byte header, the lookup tables, and all address records
+    sequentially into a bytearray, which is flushed to disk in a single write.
+
+    Key encoding decisions:
+    - lat/lng stored as Int32LE (value × 100,000) to preserve 5 decimal places
+      without floating-point overhead in the browser.
+    - Each school entry is 3 bytes: Uint8 name index, Uint8 type index, Uint8
+      zone index — keeping the per-school overhead minimal.
+    - id and address are Uint16-length-prefixed UTF-8 strings, supporting
+      arbitrary length without a delimiter.
+
+    The full binary layout is documented in the module docstring.
+
+    Args:
+        input_path: Path to addresses_slim.json produced by write_slim().
+        output_path: Destination path for the binary file.  Parent directories
+            are created automatically.
+
+    Raises:
+        KeyError: If an address record references a type or zone string not seen
+            during the first pass, indicating a malformed input file.
+        FileNotFoundError: If input_path does not exist.
+    """
     with open(input_path, encoding='utf-8') as f:
         payload = json.load(f)
 
@@ -114,6 +143,13 @@ def build(input_path: str, output_path: str) -> None:
 
 
 def main() -> None:
+    """
+    CLI entry point for the binary encoder.
+
+    Parses --input and --output arguments (defaulting to the standard pipeline
+    paths) and delegates to build().  Intended for standalone use and debugging;
+    the pipeline normally calls build() directly via step_build_binary().
+    """
     parser = argparse.ArgumentParser(description="Convert addresses_slim.json to binary")
     parser.add_argument('--input',  default='data/addresses_slim.json')
     parser.add_argument('--output', default='data/addresses.bin')
