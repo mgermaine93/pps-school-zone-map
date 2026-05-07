@@ -31,6 +31,24 @@ API_URL = "https://app.guidek12.com/pittsburghpa/school_search/current/api.json"
 # ── Address extraction ───────────────────────────────────────
 
 def extract_addresses_from_geojson(path: str) -> list[dict]:
+    """
+    Loads and filters Pittsburgh addresses from a GeoJSON or raw JSON file.
+
+    Accepts three input shapes: a bare list of feature objects, a GeoJSON
+    FeatureCollection dict, or a single feature object. Only records where
+    the city field equals "CITY OF PITTSBURGH" and both house number and
+    street name are present are included in the output.
+
+    Args:
+        path: Filesystem path to the input GeoJSON or JSON file.
+
+    Returns:
+        A list of dicts, each containing:
+            id (any): Original feature identifier.
+            address (str): Formatted string "NUMBER STREET, PITTSBURGH, STATE POSTCODE".
+            lat (float | None): Latitude from the source data.
+            lng (float | None): Longitude from the source data.
+    """
     with open(path, "r") as f:
         data = json.load(f)
 
@@ -42,6 +60,7 @@ def extract_addresses_from_geojson(path: str) -> list[dict]:
         features = [data]
 
     results = []
+    seen_addresses: set[str] = set()
 
     for feature in features:
         props = feature.get("raw", feature)
@@ -60,6 +79,10 @@ def extract_addresses_from_geojson(path: str) -> list[dict]:
 
         address = f"{number} {street}, PITTSBURGH, {state} {postcode}"
 
+        if address in seen_addresses:
+            continue
+        seen_addresses.add(address)
+
         results.append({
             "id": feature.get("id"),
             "address": address,
@@ -67,24 +90,49 @@ def extract_addresses_from_geojson(path: str) -> list[dict]:
             "lng": feature.get("lng"),
         })
 
-    print(f"✅ Loaded {len(results)} Pittsburgh addresses")
+    print(f"✅ Loaded {len(results)} Pittsburgh addresses ({len(features) - len(results)} duplicates skipped)")
     return results
 
 # ── Load school catalog ──────────────────────────────────────
 
 def load_school_catalog(path: str) -> dict:
+    """
+    Builds a school metadata lookup table from a GuideK12 school-info JSON file.
+
+    Accepts two formats: a bare JSON array (the preprocessed data/schools.json)
+    or a GuideK12 raw response envelope ({"result": [...]}). Entries are indexed
+    by school ID and field names are normalised across both formats.
+
+    Args:
+        path: Filesystem path to either a preprocessed schools.json or a
+            raw GuideK12 school-info JSON file.
+
+    Returns:
+        A dict mapping school ID (int) to a metadata dict containing:
+            name (str): Display name of the school.
+            address (str): Full street address.
+            type (str): School type code (e.g. 'ELEM', 'K8', 'MIDD', 'HIGH').
+    """
     with open(path, "r") as f:
         data = json.load(f)
 
-    schools = data.get("result", data)
+    # Accept a bare list (data/schools.json) or a {"result": [...]} envelope (GuideK12 raw)
+    schools = data if isinstance(data, list) else data.get("result", [])
 
     school_map = {}
 
     for s in schools:
+        # GuideK12 raw format uses street_address/school_label/attr.SCHOOL_TYPE;
+        # preprocessed schools.json uses address/name/type directly
+        if s.get("street_address"):
+            address = f"{s.get('street_address', '')}, {s.get('city', '')}, {s.get('state', '')} {s.get('zip', '')}"
+        else:
+            address = s.get("address", "")
+
         school_map[s["id"]] = {
-            "name": s.get("school_label"),
-            "address": f"{s.get('street_address', '')}, {s.get('city', '')}, {s.get('state', '')} {s.get('zip', '')}",
-            "type": (s.get("attr", {}).get("SCHOOL_TYPE") or [""])[0]
+            "name": s.get("school_label") or s.get("name"),
+            "address": address,
+            "type": (s.get("attr", {}).get("SCHOOL_TYPE") or [s.get("type", "")])[0]
         }
 
     print(f"✅ Loaded {len(school_map)} schools into cache")
@@ -93,6 +141,25 @@ def load_school_catalog(path: str) -> dict:
 # ── API lookup ───────────────────────────────────────────────
 
 async def lookup_by_point(session, lat, lng):
+    """
+    Queries the GuideK12 API for schools assigned to a geographic point.
+
+    Sends a POST request with a WKT POINT geometry (longitude first, as
+    required by the API's spatial_args format) requesting all school types
+    across all zone types. Returns the list of raw school result objects
+    from the API response.
+
+    Args:
+        session (aiohttp.ClientSession): Active HTTP session with required
+            browser-like headers already set.
+        lat (float): Latitude of the address point.
+        lng (float): Longitude of the address point. Sent first in WKT format
+            per the GeoJSON / WKT convention (x before y).
+
+    Returns:
+        list[dict]: Raw school result objects from the API, or an empty list
+            if the response is missing, malformed, or non-JSON.
+    """
     payload = {
         "mode": "schools_spatial",
         "attr": {
@@ -120,7 +187,7 @@ async def lookup_by_point(session, lat, lng):
     }
 
     print("POSTING TO:", API_URL)
-    print(json.dumps(payload, indent=2))
+    # print(json.dumps(payload, indent=2))
 
     async with session.post(API_URL, json=payload, headers=HEADERS) as resp:
         text = await resp.text()
@@ -141,8 +208,25 @@ async def lookup_by_point(session, lat, lng):
 # ── Worker ───────────────────────────────────────────────────
 
 async def worker(queue, session, school_map,
-                 progress, total, output_path, file_lock):
+                 progress, total, output_path, file_lock, is_first):
+    """
+    Consumes address records from the queue and appends school lookup results to disk.
 
+    Continuously dequeues records until the queue is empty. For each record,
+    calls lookup_by_point, enriches raw API results using school_map metadata,
+    skips BOARD-type entries, logs progress to stdout, and appends a JSON line
+    to the output file under a file lock to prevent concurrent write corruption.
+
+    Args:
+        queue (asyncio.Queue): Queue of address record dicts to process.
+        session (aiohttp.ClientSession): Shared HTTP session for API requests.
+        school_map (dict): School ID → metadata dict from load_school_catalog.
+        progress (list[int]): Single-element list used as a shared mutable counter
+            across all concurrent workers.
+        total (int): Total number of records, used to compute progress percentage.
+        output_path (str): Path to the output NDJSON file.
+        file_lock (asyncio.Lock): Lock that serializes writes to output_path.
+    """
     while True:
         try:
             record = queue.get_nowait()
@@ -162,17 +246,19 @@ async def worker(queue, session, school_map,
 
                 for r in raw_results:
                     sid = r["id"]
-                    meta = school_map.get(sid, {})
+                    meta = school_map.get(sid)
 
-                    # Optional: skip board districts
+                    if not meta or not meta.get("name"):
+                        continue
+
                     if meta.get("type") == "BOARD":
                         continue
 
                     schools.append({
                         "id": sid,
-                        "name": meta.get("name"),
-                        "address": meta.get("address"),
-                        "type": meta.get("type"),
+                        "name": meta["name"],
+                        "address": meta.get("address") or "",
+                        "type": meta.get("type") or "",
                         "zones": r.get("zones", [])
                     })
 
@@ -185,7 +271,7 @@ async def worker(queue, session, school_map,
         progress[0] += 1
         pct = progress[0] / total * 100
 
-        school_names = "; ".join(s.get("name", "?") for s in result["schools"])
+        school_names = "; ".join(s["name"] for s in result["schools"])
         status = school_names[:70] if school_names else "(no schools)"
 
         print(f"[{progress[0]:4d}/{total} {pct:5.1f}%] {record['address'][:50]} → {status}")
@@ -203,15 +289,35 @@ async def worker(queue, session, school_map,
 
         async with file_lock:
             with open(output_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(record_out) + "\n")
+                prefix = "\n  " if is_first[0] else ",\n  "
+                f.write(prefix + json.dumps(record_out))
+                is_first[0] = False
 
         queue.task_done()
 
 # ── Runner ───────────────────────────────────────────────────
 
 async def run(input_path: str, school_path: str, output_path: str,
-              concurrency: int = 50, limit: int | None = None):
+              concurrency: int = 50, limit: int | None = None,
+              slim_output_path: str | None = None):
+    """
+    Orchestrates the full address-to-school lookup pipeline.
 
+    Loads addresses from the GeoJSON input, optionally caps the list, initializes
+    the async queue and worker pool, establishes a browser-like HTTP session
+    (including a cookie-seeding GET request to the GuideK12 portal), and runs
+    all workers concurrently. Results are written incrementally to output_path
+    as newline-delimited JSON so progress is preserved if the run is interrupted.
+
+    Args:
+        input_path (str): Path to the GeoJSON file containing address records.
+        school_path (str): Path to the school-info JSON catalog file.
+        output_path (str): Path where NDJSON output will be written (overwritten
+            at the start of each run).
+        concurrency (int): Maximum number of simultaneous API requests. Default 50.
+        limit (int | None): If set, caps the number of addresses processed.
+            Default None (process all).
+    """
     records = extract_addresses_from_geojson(input_path)
 
     if limit:
@@ -226,12 +332,12 @@ async def run(input_path: str, school_path: str, output_path: str,
         queue.put_nowait(r)
 
     progress = [0]
+    is_first = [True]
     start = time.time()
     file_lock = asyncio.Lock()
 
-    # clear output
-    with open(output_path, "w"):
-        pass
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("[")
 
     school_map = load_school_catalog(school_path)
 
@@ -258,7 +364,8 @@ async def run(input_path: str, school_path: str, output_path: str,
                     progress,
                     total,
                     output_path,
-                    file_lock
+                    file_lock,
+                    is_first,
                 )
             )
             for _ in range(min(concurrency, total))
@@ -266,21 +373,82 @@ async def run(input_path: str, school_path: str, output_path: str,
 
         await asyncio.gather(*workers)
 
+    with open(output_path, "a", encoding="utf-8") as f:
+        f.write("\n]\n")
+
     elapsed = time.time() - start
 
     print(f"\n✅ Done in {elapsed:.0f}s ({elapsed/max(total,1):.3f}s/address)")
     print(f"📄 Output: {output_path}")
 
+    if slim_output_path:
+        write_slim(output_path, slim_output_path)
+
+# ── Slim converter ───────────────────────────────────────────
+
+def write_slim(input_path: str, output_path: str) -> None:
+    with open(input_path, encoding="utf-8") as f:
+        records = json.load(f)
+
+    records = [
+        r for r in records
+        if r.get("lat") is not None and r.get("lng") is not None and r.get("schools")
+    ]
+
+    school_name_list: list[str] = []
+    school_name_index: dict[str, int] = {}
+    for r in records:
+        for s in r["schools"]:
+            name = s["name"]
+            if name not in school_name_index:
+                school_name_index[name] = len(school_name_list)
+                school_name_list.append(name)
+
+    addresses = [
+        {
+            "id": r["id"],
+            "address": r["address"],
+            "lat": round(r["lat"], 5),
+            "lng": round(r["lng"], 5),
+            "schools": [
+                [school_name_index[s["name"]], s["type"], ",".join(s["zones"])]
+                for s in r["schools"]
+            ],
+        }
+        for r in records
+    ]
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump({"schoolNames": school_name_list, "addresses": addresses}, f)
+
+    print(f"📦 Slim output: {output_path} ({len(addresses)} addresses, {len(school_name_list)} unique schools)")
+
 # ── CLI ──────────────────────────────────────────────────────
 
 def main():
+    """
+    Parses command-line arguments and launches the async scraper pipeline.
+
+    Validates that the input address file and school catalog both exist before
+    starting. Exits with code 1 if either file is missing.
+
+    CLI arguments:
+        --input  / -i  (required) Path to the input GeoJSON address file.
+        --schools / -s (required) Path to the GuideK12 school-info JSON catalog.
+        --output / -o  Output NDJSON file path. Default: new_pps_schools_3.json.
+        --concurrency / -c  Max concurrent API requests. Default: 50.
+        --limit / -l   Cap on number of addresses to process. Default: no limit.
+    """
     parser = argparse.ArgumentParser(
         description="Fast PPS school lookup using GuideK12 API"
     )
     parser.add_argument("--input", "-i", required=True)
     parser.add_argument("--schools", "-s", required=True,
                         help="Path to school-info.json")
-    parser.add_argument("--output", "-o", default="new_pps_schools_2.json")
+    parser.add_argument("--output", "-o", default="new_schools_files.json")
+    parser.add_argument("--slim-output", default="data/addresses_slim.json",
+                        help="Path for slim encoded output (default: data/addresses_slim.json). Pass empty string to skip.")
     parser.add_argument("--concurrency", "-c", type=int, default=50)
     parser.add_argument("--limit", "-l", type=int, default=None)
 
@@ -300,7 +468,8 @@ def main():
             args.schools,
             args.output,
             args.concurrency,
-            args.limit
+            args.limit,
+            args.slim_output or None,
         )
     )
 

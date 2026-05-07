@@ -87,7 +87,14 @@ border-bottom: 1px solid #f0f0f0;
 }
 
 .search-result-item:last-child { border-bottom: none; }
-.search-result-item:hover, .search-result-item:active { background: #f5f5f5; }
+.search-result-item:hover, .search-result-item:active, .search-result-item.active { background: #f5f5f5; }
+
+.search-no-results {
+  padding: 10px 8px;
+  font-size: 13px;
+  color: #999;
+  font-style: italic;
+}
 
 #searchInfo {
 margin-top: 8px;
@@ -131,6 +138,13 @@ min-height: 28px;
 .legend-item:hover, .legend-item:active { background: #f0f0f0; }
 .legend-item.dimmed { opacity: 0.35; }
 
+.legend-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: #aaa;
+  white-space: nowrap;
+}
+
 .legend-dot {
 width: 12px;
 height: 12px;
@@ -143,6 +157,18 @@ border: 1px solid rgba(0,0,0,0.2);
 font-size: 11px;
 color: #999;
 margin-top: 8px;
+}
+
+.addr-tooltip {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid #ddd;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  color: #333;
 }
 
 /* ---- MOBILE ---- */
@@ -192,6 +218,23 @@ margin-top: 8px;
 
 .legend-item { min-height: 36px; }
 }
+
+.text-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  color: #555;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.text-btn:hover { background: #f5f5f5; }
 
 #aboutBtn {
   display: block;
@@ -332,7 +375,10 @@ margin-top: 8px;
 }
 
 .dark-basemap .search-result-item:hover,
-.dark-basemap .search-result-item:active { background: #333; }
+.dark-basemap .search-result-item:active,
+.dark-basemap .search-result-item.active { background: #333; }
+
+.dark-basemap .search-no-results { color: #666; }
 
 .dark-basemap #searchInfo {
   background: #2a2a2a;
@@ -349,7 +395,22 @@ margin-top: 8px;
 .dark-basemap .legend-item:hover,
 .dark-basemap .legend-item:active { background: #333; }
 
+.dark-basemap .legend-count { color: #666; }
+
+.dark-basemap .addr-tooltip {
+  background: rgba(30,30,30,0.92);
+  border-color: #444;
+  color: #e0e0e0;
+}
+
 .dark-basemap #status { color: #777; }
+
+.dark-basemap .text-btn {
+  border-color: #444;
+  color: #aaa;
+}
+
+.dark-basemap .text-btn:hover { background: #333; }
 
 .dark-basemap #aboutBtn {
   border-color: #444;

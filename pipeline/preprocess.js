@@ -20,7 +20,34 @@ const slim = data
     // drops p.raw, p.error, p.school_count — not needed by the map
   }));
 
-fs.writeFileSync('data/addresses_slim.json', JSON.stringify(slim));
+// Build a lookup array of unique school names so each address record can
+// reference a school by index instead of repeating the full name string.
+const schoolNameList = [];
+const schoolNameIndex = {};
+slim.forEach(point => {
+  point.schools.forEach(s => {
+    if (!(s.name in schoolNameIndex)) {
+      schoolNameIndex[s.name] = schoolNameList.length;
+      schoolNameList.push(s.name);
+    }
+  });
+});
+
+// Encode each school as [nameIndex, typeCode, zonesString] to eliminate
+// repeated string values across the ~116k address records.
+const slimEncoded = slim.map(point => ({
+  ...point,
+  schools: point.schools.map(s => [
+    schoolNameIndex[s.name],
+    s.type,
+    s.zones.join(',')
+  ])
+}));
+
+fs.writeFileSync('data/addresses_slim.json', JSON.stringify({
+  schoolNames: schoolNameList,
+  addresses: slimEncoded
+}));
 
 // Build address → coords lookup so school pins use the same coordinates
 // as the dot already plotted for that address, not a separate Nominatim result

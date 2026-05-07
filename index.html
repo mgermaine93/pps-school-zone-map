@@ -5,6 +5,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
+    <link rel="preload" href="data/addresses.bin" as="fetch" crossorigin />
+    <link rel="preload" href="data/schools.json" as="fetch" crossorigin />
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -16,7 +18,10 @@
     <h3>Pittsburgh Public School Zones</h3>
     <div id="loader">
       <div class="spinner"></div>
-      <p>Loading addresses…</p>
+      <p id="loaderText">Loading addresses…</p>
+      <div style="width:100%;background:#e0e0e0;border-radius:3px;height:6px;margin-top:4px;overflow:hidden">
+        <div id="loadProgressBar" style="height:100%;width:0%;background:#4a90d9;border-radius:3px;transition:width 0.15s ease"></div>
+      </div>
     </div>
 
     <!-- ADDRESS SEARCH -->
@@ -26,6 +31,8 @@
       <div id="searchResults"></div>
       <div id="searchInfo"></div>
     </div>
+
+    <button id="clearAllBtn" class="text-btn" style="display:none">Clear search &amp; filters</button>
 
     <hr class="divider">
 
@@ -41,7 +48,7 @@
 
     <!-- this menu determines the group of schools that show up on the map -->
     <div class="filter-group">
-      <label>Filter by type</label>
+      <label>Map by type</label>
       <select id="typeFilter">
         <option value="">All types</option>
         <option value="K8">K8</option>
@@ -54,15 +61,16 @@
 
     <!-- this menu maps a single school onto the map -->
     <div class="filter-group">
-      <label>Filter by school</label>
+      <label>Map by school</label>
       <select id="schoolFilter">
         <option value="">All schools</option>
       </select>
     </div>
+    <div id="schoolInfoStrip" style="display:none"></div>
 
     <!-- school location pins -->
     <div class="filter-group">
-      <label>School location pins</label>
+      <label>Map school locations</label>
       <select id="schoolPins">
         <option value="">None</option>
         <option value="ALL">All schools</option>
@@ -87,6 +95,8 @@
       </select>
     </div>
 
+    <button id="resetViewBtn" class="text-btn">Reset map view</button>
+
     <div class="legend" id="legend"></div>
     <div id="status"></div>
 
@@ -102,7 +112,7 @@
         For Pittsburgh residents, figuring out which public schools a home address is assigned to is surprisingly difficult.
       </p>
       <p>
-        Attendance zones form a patchwork of irregular shapes, jagged boundaries, and even discontinuous areas. While <a href="https://data.wprdc.org/dataset/pittsburgh-public-schools-enrollment/resource/643511e3-e99a-4e2a-94a4-033ddb944e94" target="_blank" rel="noopener noreferrer">data</a>, <a href="https://www.wesa.fm/education/2018-10-22/strange-shapes-jagged-lines-the-patchwork-of-pittsburgh-school-zones" target="_blank" rel="noopener noreferrer">static maps</a>, and the district's <a href="https://app.guidek12.com/pittsburghpa/school_search/current/" target="_blank" rel="noopener noreferrer">school search portal</a> exist, there is no single, simple way to interactively look up school assignments at the address level.
+        Attendance zones form a patchwork of irregular shapes, jagged boundaries, and even discontinuous areas. While <a href="https://data.wprdc.org/dataset/pittsburgh-public-schools-enrollment/resource/643511e3-e99a-4e2a-94a4-033ddb944e94" target="_blank" rel="noopener noreferrer">data</a>, <a href="https://www.wesa.fm/education/2018-10-22/strange-shapes-jagged-lines-the-patchwork-of-pittsburgh-school-zones" target="_blank" rel="noopener noreferrer">static maps</a>, and the district's <a href="https://app.guidek12.com/pittsburghpa/school_search/current/" target="_blank" rel="noopener noreferrer">school search portal</a> exist, there is no single, simple way to interactively look up school assignments by residential address or neighborhood.
       </p>
       <p>
         This tool addresses that gap by visualizing Pittsburgh Public Schools (PPS) attendance zones and showing school assignments for each address across elementary, middle, and high school levels.
@@ -117,10 +127,11 @@
       <ul>
         <li><strong>Click a point</strong> — view detailed school assignments for that specific address.</li>
         <li><strong>Search address</strong> — type an address to zoom to it and see its school assignments.</li>
-        <li><strong>Map style</strong> — choose from Street, Light, Dark, or Satellite backgrounds. Selecting Dark also switches the sidebar to a dark theme.</li>
         <li><strong>Color by</strong> — switch between Elementary/K8, Middle, and High School coloring.</li>
-        <li><strong>Filter by type</strong> — show only addresses zoned for a given school level.</li>
-        <li><strong>Filter by school</strong> — highlight all addresses assigned to a specific school.</li>
+        <li><strong>Map by type</strong> — show only addresses zoned for a given school level.</li>
+        <li><strong>Map by school</strong> — highlight all addresses assigned to a specific school.</li>
+        <li><strong>Map school locations</strong> — illustrate where various public schools are located throughout the city.</li>
+        <li><strong>Map style</strong> — choose from Street, Light, Dark, or Satellite backgrounds. Selecting Dark also switches the sidebar to a dark theme.</li>
         <li><strong>Legend</strong> — click a school name to highlight its assigned addresses.</li>
       </ul>
       <h3>Data</h3>

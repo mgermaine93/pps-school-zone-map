@@ -1,8 +1,17 @@
-const CACHE_NAME = 'pps-schools-v1';
+const CACHE_NAME = 'pps-schools-v4';
 
-// Activate immediately — don't wait for existing tabs to close
+const PRECACHE_FILES = [
+  'data/addresses.bin',
+  'data/schools.json',
+];
+
+// Pre-fetch data files during install so second+ loads are served from cache
 self.addEventListener('install', event => {
-  event.waitUntil(self.skipWaiting());
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(PRECACHE_FILES))
+      .then(() => self.skipWaiting())
+  );
 });
 
 // Clean up any previous cache versions on activation
@@ -18,9 +27,9 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Cache-first strategy for the data file only
+// Cache-first strategy for data files
 self.addEventListener('fetch', event => {
-  if (!event.request.url.includes('addresses_slim.json')) return;
+  if (!PRECACHE_FILES.some(f => event.request.url.includes(f))) return;
 
   event.respondWith(
     caches.open(CACHE_NAME).then(cache =>
