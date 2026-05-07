@@ -17,6 +17,7 @@ import asyncio
 import importlib.util
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -125,6 +126,24 @@ def step_build_binary(logger: logging.Logger) -> None:
     logger.info("Step 3/3  Done → %s", ADDRESSES_BIN)
 
 
+# ── Index date update ─────────────────────────────────────────
+
+def update_index_date(logger: logging.Logger) -> None:
+    index_path = ROOT / "index.html"
+    date_str = datetime.now().strftime("%B %Y")
+    content = index_path.read_text(encoding="utf-8")
+    updated = re.sub(
+        r"(<em>Data last updated: )([^<]+)(</em>)",
+        rf"\g<1>{date_str}.\g<3>",
+        content,
+    )
+    if updated == content:
+        logger.info("Index date already current — no change")
+        return
+    index_path.write_text(updated, encoding="utf-8")
+    logger.info("Updated 'Data last updated' in index.html → %s", date_str)
+
+
 # ── Git push ─────────────────────────────────────────────────
 
 def git_push_changes(logger: logging.Logger) -> None:
@@ -136,6 +155,7 @@ def git_push_changes(logger: logging.Logger) -> None:
         str(SCHOOLS_PATH),
         str(ADDRESSES_SLIM),
         str(ADDRESSES_BIN),
+        str(ROOT / "index.html"),
     ]
 
     subprocess.run(["git", "add", *files_to_stage], check=True, cwd=ROOT)
@@ -174,6 +194,7 @@ def main() -> None:
         step_refresh_schools(logger)
         step_scrape_addresses(logger)
         step_build_binary(logger)
+        update_index_date(logger)
         git_push_changes(logger)
     except (Exception, SystemExit) as exc:
         logger.exception("Pipeline failed: %s", exc)
