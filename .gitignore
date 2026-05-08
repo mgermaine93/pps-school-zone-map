@@ -1,3 +1,13 @@
+# Standard stuff
 venv/
-old-files/
+__pycache__/
+.pytest_cache/
+.DS_Store
+
+# large files that don't need to be committed.
 logs/
+data/addresses_full.json
+backups/
+
+node_modules/
+tests/js/node_modules/
