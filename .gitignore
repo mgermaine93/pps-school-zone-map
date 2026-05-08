@@ -1,6 +1,7 @@
 # Standard stuff
 venv/
 __pycache__/
+.pytest_cache/
 .DS_Store
 
 # large files that don't need to be committed.
