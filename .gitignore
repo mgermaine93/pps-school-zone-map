@@ -1,7 +1,11 @@
+# Standard stuff
 venv/
-logs/
+__pycache__/
 .DS_Store
+
+# large files that don't need to be committed.
+logs/
 data/addresses_full.json
 backups/
-__pycache__/
-tests/js/node_modules/
+
+node_modules/
