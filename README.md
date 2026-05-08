@@ -38,6 +38,43 @@ Ultimately, this project aims to make school boundary information more transpare
 - School assignments shown here reflect standard attendance boundaries and do not account for transfers, magnet placements, or other special enrollment cases.
 - Attendance boundaries may change over time; assignments shown here reflect the most recent available data.
 
+## Project Structure
+
+```
+pps-school-zone-map/
+├── .github/
+│   └── workflows/
+│       └── monthly-refresh.yml   # GitHub Actions workflow for automated monthly data refresh
+├── assets/
+│   └── app-home-screen.png       # Screenshot used in this README
+├── backups/                      # Point-in-time snapshots of data and scripts for recovery
+├── data/
+│   ├── addresses.bin             # Compact binary encoding of geocoded address data (served to the frontend)
+│   ├── addresses_full.json       # Full address records with all fields from the pipeline
+│   ├── addresses_slim.json       # Slimmed-down address records used during the build step
+│   ├── pittsburgh_addresses.json # Raw Pittsburgh address data from OpenAddresses.io
+│   └── schools.json              # School metadata (name, type, location) scraped from PPS
+├── img/
+│   └── favicon-*.svg             # SVG favicons that change based on the selected grade-level filter
+├── pipeline/
+│   ├── build_binary.py           # Converts processed address JSON into the compact binary format
+│   ├── refresh_schools.py        # Refreshes school metadata from the PPS school search portal
+│   └── scraper-v2.py             # Scrapes school zone assignments for each Pittsburgh address
+├── tests/
+│   ├── js/                       # JavaScript unit tests
+│   ├── test_build_binary.py      # Tests for the binary build step
+│   ├── test_main.py              # Tests for main.py
+│   ├── test_refresh_schools.py   # Tests for the school refresh script
+│   └── test_scraper.py           # Tests for the scraper
+├── index.html                    # Main application entry point
+├── index.js                      # Frontend application logic (map rendering, filtering, search)
+├── main.py                       # Orchestrates the full data pipeline end-to-end
+├── requirements.txt              # Python runtime dependencies
+├── requirements-dev.txt          # Additional Python dependencies for development and testing
+├── styles.css                    # Application styles
+└── sw.js                         # Service worker for offline support and asset caching
+```
+
 ## Disclaimer
 
 - This tool draws from official sources (e.g., the PPS portal), but is intended for informational use and should not be considered an official PPS source.
