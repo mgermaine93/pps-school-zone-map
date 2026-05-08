@@ -111,9 +111,31 @@ margin-bottom: 6px;
 color: #222;
 }
 
+#searchInfo .info-city {
+font-weight: normal;
+font-size: 11px;
+color: #555;
+}
+
 #searchInfo ul { margin: 0; padding-left: 16px; }
 #searchInfo li { margin-bottom: 3px; }
 #searchInfo .school-type { color: #888; font-size: 11px; }
+
+#schoolInfoStrip {
+  font-size: 12px;
+  padding: 8px 10px;
+  background: #f5f5f5;
+  border-radius: 6px;
+  line-height: 1.7;
+  margin-top: 4px;
+  margin-bottom: 12px;
+  color: #333;
+}
+
+#schoolInfoStrip .strip-type  { color: #888; }
+#schoolInfoStrip .strip-addr  { color: #666; }
+#schoolInfoStrip .strip-count { color: #999; }
+#schoolInfoStrip .strip-link  { color: #3a7bd5; text-decoration: none; }
 
 .divider {
 border: none;
@@ -171,6 +193,10 @@ margin-top: 8px;
   color: #333;
 }
 
+.popup-addr        { font-size: 12px; color: #666; }
+.popup-school-type { color: #888; }
+.popup-details     { margin-top: 5px; font-size: 12px; color: #555; line-height: 1.6; }
+
 /* ---- MOBILE ---- */
 @media (max-width: 600px) {
 #toggleBtn { display: block; }
@@ -217,6 +243,16 @@ margin-top: 8px;
 .search-result-item { padding: 12px 10px; }
 
 .legend-item { min-height: 36px; }
+
+.text-btn {
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+#aboutBtn {
+  padding: 10px 12px;
+  font-size: 14px;
+}
 }
 
 .text-btn {
@@ -235,6 +271,19 @@ margin-top: 8px;
 }
 
 .text-btn:hover { background: #f5f5f5; }
+
+#clearAllBtn,
+#resetViewBtn {
+  background: #fef3e2;
+  border-color: #e8960c;
+  color: #7a4f00;
+  font-weight: 600;
+}
+
+#clearAllBtn:hover,
+#resetViewBtn:hover {
+  background: #fde0a0;
+}
 
 #aboutBtn {
   display: block;
@@ -386,7 +435,18 @@ margin-top: 8px;
 }
 
 .dark-basemap #searchInfo .info-address { color: #e0e0e0; }
+.dark-basemap #searchInfo .info-city    { color: #aaa; }
 .dark-basemap #searchInfo .school-type  { color: #888; }
+
+.dark-basemap #schoolInfoStrip {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.dark-basemap #schoolInfoStrip .strip-type  { color: #aaa; }
+.dark-basemap #schoolInfoStrip .strip-addr  { color: #bbb; }
+.dark-basemap #schoolInfoStrip .strip-count { color: #777; }
+.dark-basemap #schoolInfoStrip .strip-link  { color: #6ab0f5; }
 
 .dark-basemap .divider { border-top-color: #333; }
 
@@ -403,6 +463,18 @@ margin-top: 8px;
   color: #e0e0e0;
 }
 
+.dark-basemap .leaflet-popup-content-wrapper,
+.dark-basemap .leaflet-popup-tip {
+  background: #1e1e1e;
+  color: #e0e0e0;
+  box-shadow: 0 3px 14px rgba(0,0,0,0.6);
+}
+
+.dark-basemap .leaflet-popup-content-wrapper a { color: #6ab0f5; }
+.dark-basemap .popup-addr        { color: #bbb; }
+.dark-basemap .popup-school-type { color: #aaa; }
+.dark-basemap .popup-details     { color: #aaa; }
+
 .dark-basemap #status { color: #777; }
 
 .dark-basemap .text-btn {
@@ -411,6 +483,18 @@ margin-top: 8px;
 }
 
 .dark-basemap .text-btn:hover { background: #333; }
+
+.dark-basemap #clearAllBtn,
+.dark-basemap #resetViewBtn {
+  background: #3a2800;
+  border-color: #b07300;
+  color: #ffc74d;
+}
+
+.dark-basemap #clearAllBtn:hover,
+.dark-basemap #resetViewBtn:hover {
+  background: #4d3500;
+}
 
 .dark-basemap #aboutBtn {
   border-color: #444;

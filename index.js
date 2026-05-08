@@ -9,7 +9,10 @@ if ('serviceWorker' in navigator) {
 // --------------------
 // MAP INIT
 // --------------------
-const map = L.map('map').setView([40.44, -79.99], 12);
+const PITTSBURGH_BOUNDS = L.latLngBounds([[40.36, -80.10], [40.50, -79.87]]);
+const map = L.map('map').fitBounds(PITTSBURGH_BOUNDS);
+const DEFAULT_ZOOM   = map.getZoom();
+const DEFAULT_CENTER = map.getCenter();
 
 const basemaps = {
   osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -59,6 +62,17 @@ function updateMarkerRadius() {
 }
 
 map.on('zoomend', updateMarkerRadius);
+
+function updateResetViewBtn() {
+  const c = map.getCenter();
+  const EPS = 0.0001;
+  const atDefault = map.getZoom() === DEFAULT_ZOOM &&
+    Math.abs(c.lat - DEFAULT_CENTER.lat) < EPS &&
+    Math.abs(c.lng - DEFAULT_CENTER.lng) < EPS;
+  document.getElementById('resetViewBtn').style.display = atDefault ? 'none' : '';
+}
+
+map.on('moveend', updateResetViewBtn);
 
 /**
  * Retrieves or generates a deterministic HSL color for a school.
@@ -141,8 +155,16 @@ function schoolIcon(type) {
 // --------------------
 const TYPE_LABELS = { ELEM: 'Elementary', K8: 'PreK–8', MIDD: 'Middle School', HIGH: 'High School', ONLINE: 'Online' };
 
+function splitAddress(address) {
+  const i = address.indexOf(',');
+  return i !== -1
+    ? { street: address.slice(0, i), city: address.slice(i + 2) }
+    : { street: address, city: '' };
+}
+
 function schoolPopupHTML(school) {
   const typeLabel = TYPE_LABELS[school.type] || school.type;
+  const { street: streetLine, city: cityLine } = splitAddress(school.address);
 
   let details = '';
   if (school.main_phone) {
@@ -156,9 +178,9 @@ function schoolPopupHTML(school) {
 
   return `
     <b>${school.name}</b><br>
-    <span style="color:#888;font-size:12px">${typeLabel}</span><br>
-    <small style="color:#666">${school.address}</small>
-    ${details ? `<div style="margin-top:5px;font-size:12px;color:#555;line-height:1.6">${details}</div>` : ''}
+    <span class="popup-school-type">${typeLabel}</span><br>
+    <span class="popup-addr">${streetLine}${cityLine ? `<br>${cityLine}` : ''}</span>
+    ${details ? `<div class="popup-details">${details}</div>` : ''}
   `.trim();
 }
 
@@ -311,19 +333,17 @@ fetch('data/addresses.bin')
           fillOpacity: 0.8
         });
 
-        const commaIdx = point.address.indexOf(',');
-        const tooltipHTML = commaIdx !== -1
-          ? `${point.address.slice(0, commaIdx)}<br>${point.address.slice(commaIdx + 2)}`
-          : point.address;
+        const { street, city } = splitAddress(point.address);
+        const tooltipHTML = city ? `${street}<br>${city}` : street;
         marker.bindTooltip(tooltipHTML, { sticky: true, className: 'addr-tooltip' });
 
         // Generate popup HTML only on click, not for all 116k markers at load time
         marker.bindPopup(() => {
           const schoolList = point.schools
-            .map(s => `<li><b>${s.name}</b> <span style="color:#888">(${TYPE_LABELS[s.type] || s.type})</span></li>`)
+            .map(s => `<li><b>${s.name}</b> <span class="popup-school-type">(${TYPE_LABELS[s.type] || s.type})</span></li>`)
             .join('');
           return `
-            <b>${point.address}</b><br>
+            <b>${street}</b>${city ? `<br><span class="popup-addr">${city}</span>` : ''}
             <ul style="margin:6px 0 0;padding-left:16px;font-size:12px">${schoolList}</ul>
           `;
         });
@@ -463,6 +483,7 @@ document.getElementById('colorBy').addEventListener('change', e => {
   currentTypeFilter = '';
   document.getElementById('schoolFilter').value = '';
   document.getElementById('typeFilter').value = '';
+  updateClearBtn();
   withLoader('Applying colors…', recolor);
 });
 
@@ -520,8 +541,10 @@ function selectAddress(point) {
     .map(s => `<li><b>${s.name}</b> <span class="school-type">(${s.type})</span></li>`)
     .join('');
 
+  const { street: addrStreet, city: addrCity } = splitAddress(point.address);
+
   searchInfo.innerHTML = `
-    <div class="info-address">${point.address}</div>
+    <div class="info-address">${addrStreet}${addrCity ? `<br><span class="info-city">${addrCity}</span>` : ''}</div>
     <ul>${schoolItems}</ul>
   `;
   searchInfo.style.display = 'block';
@@ -597,7 +620,7 @@ document.getElementById('schoolPins').addEventListener('change', e => {
 });
 
 function updateClearBtn() {
-  const active = searchMarker || currentSchoolFilter || currentTypeFilter;
+  const active = searchMarker || currentSchoolFilter || currentTypeFilter || currentColorBy !== 'ELEM';
   document.getElementById('clearAllBtn').style.display = active ? '' : 'none';
 }
 
@@ -632,7 +655,7 @@ function resetAll() {
   currentPins = '';
   document.getElementById('schoolPins').value = '';
   updateSchoolPins('');
-  withLoader('Resetting…', applyFilters);
+  withLoader('Resetting…', recolor);
 }
 
 // Escape clears the search from anywhere on the page
@@ -643,7 +666,7 @@ document.addEventListener('keydown', e => {
 document.getElementById('clearAllBtn').addEventListener('click', resetAll);
 
 document.getElementById('resetViewBtn').addEventListener('click', () => {
-  map.flyTo([40.44, -79.99], 12);
+  map.flyToBounds(PITTSBURGH_BOUNDS);
 });
 
 // --------------------
@@ -825,28 +848,24 @@ function applyFilters() {
     map.flyTo([school.lat, school.lng], 15);
 
     const phoneHTML = school.main_phone
-      ? `<a href="tel:${school.main_phone.replace(/\D/g,'')}" style="color:#3a7bd5;text-decoration:none">${school.main_phone}</a>`
+      ? `<a class="strip-link" href="tel:${school.main_phone.replace(/\D/g,'')}">${school.main_phone}</a>`
       : '';
     const hoursHTML = (school.start_time && school.end_time)
       ? `Hours: ${school.start_time} &ndash; ${school.end_time}`
       : '';
-    const commaIdx = school.address.indexOf(',');
-    const streetLine = commaIdx !== -1 ? school.address.slice(0, commaIdx) : school.address;
-    const cityLine   = commaIdx !== -1 ? school.address.slice(commaIdx + 2) : '';
+    const { street: streetLine, city: cityLine } = splitAddress(school.address);
     const zoneCount  = allMarkers.filter(({ point }) =>
       point.schools.some(s => s.name === currentSchoolFilter)).length;
     strip.innerHTML = `
-      <div style="font-size:12px;padding:8px 10px;background:var(--bg-secondary,#f5f5f5);border-radius:6px;line-height:1.7">
-        <strong>${school.name}</strong><br>
-        <span style="color:#888">${TYPE_LABELS[school.type] || school.type}</span><br>
-        <span style="color:#666">${streetLine}</span><br>
-        <span style="color:#666">${cityLine}</span>
-        ${phoneHTML || hoursHTML ? `<br>${[phoneHTML, hoursHTML].filter(Boolean).join('<br>')}` : ''}
-        <br><span style="color:#999">${zoneCount.toLocaleString()} addresses in zone</span>
-        <div style="display:flex;gap:6px;margin-top:8px">
-          <button id="fitZoneBtn"  class="text-btn" style="flex:1;margin-top:0">Fit zone</button>
-          <button id="copyLinkBtn" class="text-btn" style="flex:1;margin-top:0">Copy link</button>
-        </div>
+      <strong>${school.name}</strong><br>
+      <span class="strip-type">${TYPE_LABELS[school.type] || school.type}</span><br>
+      <span class="strip-addr">${streetLine}</span><br>
+      ${cityLine ? `<span class="strip-addr">${cityLine}</span><br>` : ''}
+      ${phoneHTML || hoursHTML ? `${[phoneHTML, hoursHTML].filter(Boolean).join('<br>')}<br>` : ''}
+      <span class="strip-count">${zoneCount.toLocaleString()} addresses in zone</span>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button id="fitZoneBtn"  class="text-btn" style="flex:1;margin-top:0">Fit zone</button>
+        <button id="copyLinkBtn" class="text-btn" style="flex:1;margin-top:0">Copy link</button>
       </div>`;
     strip.style.display = 'block';
     document.getElementById('fitZoneBtn').addEventListener('click', () => {
