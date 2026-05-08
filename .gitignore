@@ -9,3 +9,4 @@ data/addresses_full.json
 backups/
 
 node_modules/
+tests/js/node_modules/
