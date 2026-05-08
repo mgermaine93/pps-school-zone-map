@@ -26,17 +26,17 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-
 ROOT = Path(__file__).parent
 
-SCHOOLS_PATH    = ROOT / "data" / "schools.json"
-ADDRESSES_INPUT = ROOT / "address-data" / "pittsburgh_addresses.json"
-ADDRESSES_FULL  = ROOT / "data" / "addresses_full.json"
-ADDRESSES_SLIM  = ROOT / "data" / "addresses_slim.json"
-ADDRESSES_BIN   = ROOT / "data" / "addresses.bin"
+SCHOOLS_PATH = ROOT / "data" / "schools.json"
+ADDRESSES_INPUT = ROOT / "data" / "pittsburgh_addresses.json"
+ADDRESSES_FULL = ROOT / "data" / "addresses_full.json"
+ADDRESSES_SLIM = ROOT / "data" / "addresses_slim.json"
+ADDRESSES_BIN = ROOT / "data" / "addresses.bin"
 
 
 # ── Logging ───────────────────────────────────────────────────
+
 
 def setup_logging() -> tuple[logging.Logger, str]:
     """
@@ -78,6 +78,7 @@ def setup_logging() -> tuple[logging.Logger, str]:
 
 # ── Backup ───────────────────────────────────────────────────
 
+
 def backup_data_files(logger: logging.Logger, timestamp: str) -> None:
     """
     Copies existing data files to a timestamped backup directory before the
@@ -118,6 +119,7 @@ def backup_data_files(logger: logging.Logger, timestamp: str) -> None:
 
 # ── Pipeline steps ────────────────────────────────────────────
 
+
 def step_refresh_schools(logger: logging.Logger) -> None:
     """
     Pipeline step 1: fetches the current school list from GuideK12 and writes
@@ -136,6 +138,7 @@ def step_refresh_schools(logger: logging.Logger) -> None:
             a non-JSON or empty response.
     """
     from pipeline.refresh_schools import fetch
+
     logger.info("Step 1/3  Refreshing school list from GuideK12...")
     asyncio.run(fetch(str(SCHOOLS_PATH)))
     logger.info("Step 1/3  Done → %s", SCHOOLS_PATH)
@@ -192,12 +195,14 @@ def step_build_binary(logger: logging.Logger) -> None:
         logger: Pipeline logger for progress messages.
     """
     from pipeline.build_binary import build
+
     logger.info("Step 3/3  Building binary from slim JSON...")
     build(str(ADDRESSES_SLIM), str(ADDRESSES_BIN))
     logger.info("Step 3/3  Done → %s", ADDRESSES_BIN)
 
 
 # ── Index date update ─────────────────────────────────────────
+
 
 def update_index_date(logger: logging.Logger) -> None:
     """
@@ -228,6 +233,7 @@ def update_index_date(logger: logging.Logger) -> None:
 
 
 # ── Git push ─────────────────────────────────────────────────
+
 
 def git_push_changes(logger: logging.Logger) -> None:
     """
@@ -274,7 +280,9 @@ def git_push_changes(logger: logging.Logger) -> None:
     date_str = datetime.now().strftime("%Y-%m-%d")
     subprocess.run(
         [
-            "git", "commit", "-m",
+            "git",
+            "commit",
+            "-m",
             f"chore: automated monthly school data refresh ({date_str})",
         ],
         check=True,
@@ -285,6 +293,7 @@ def git_push_changes(logger: logging.Logger) -> None:
 
 
 # ── Entry point ───────────────────────────────────────────────
+
 
 def main() -> None:
     """
