@@ -490,8 +490,8 @@ document.getElementById('colorBy').addEventListener('change', e => {
 /**
  * Handles selection of an address from the search results dropdown.
  *
- * Clears any existing search and school markers, places a red highlight
- * circle at the address location, adds icon pins at each assigned school's
+ * Clears any existing search and school markers, places a house icon marker
+ * at the address location, adds icon pins at each assigned school's
  * physical location (sourced from schools.json), fits the map viewport to
  * show the address and all school markers together, and populates the
  * search info panel with the full school assignment list.
@@ -558,7 +558,7 @@ function selectAddress(point) {
 }
 
 /**
- * Removes the address highlight circle placed by the most recent search.
+ * Removes the house icon marker placed by the most recent search.
  * No-op if no search marker is currently on the map.
  */
 function clearSearchMarker() {
@@ -993,10 +993,10 @@ modalClose.addEventListener('click', () => {
   aboutModal.classList.remove('open');
 });
 
-// Close on clicking outside the modal box
-aboutModal.addEventListener('click', e => {
-  if (e.target === aboutModal) aboutModal.classList.remove('open');
-});
+// Close on clicking outside the modal box (stopPropagation from the box is
+// more reliable than e.target checks on iOS Safari)
+aboutModal.addEventListener('click', () => aboutModal.classList.remove('open'));
+document.querySelector('#aboutModal .modal-box').addEventListener('click', e => e.stopPropagation());
 
 // Escape: close modal if open, otherwise fully reset the app
 document.addEventListener('keydown', e => {
