@@ -49,7 +49,7 @@
         <input
           type="text"
           id="searchInput"
-          placeholder="5000 Forbes Ave"
+          placeholder="e.g., 5000 Forbes Ave..."
           autocomplete="off"
         />
         <div id="searchResults"></div>
@@ -61,16 +61,6 @@
       </button>
 
       <hr class="divider" />
-
-      <!-- this menu determines which schools show up in the bottom part of the legend -->
-      <div class="filter-group">
-        <label>Color by</label>
-        <select id="colorBy">
-          <option value="ELEM">Elementary / K8</option>
-          <option value="MIDD">Middle</option>
-          <option value="HIGH">High School</option>
-        </select>
-      </div>
 
       <!-- this menu determines the group of schools that show up on the map -->
       <div class="filter-group">
@@ -110,6 +100,21 @@
 
       <hr class="divider" />
 
+      <!-- this menu determines which schools show up in the bottom part of the legend -->
+      <div class="filter-group">
+        <label>Browse schools by grade level</label>
+        <select id="colorBy">
+          <option value="ELEM">Elementary / K8</option>
+          <option value="MIDD">Middle</option>
+          <option value="HIGH">High School</option>
+        </select>
+      </div>
+
+      <div class="legend" id="legend"></div>
+      <div id="status"></div>
+
+      <hr class="divider" />
+
       <!-- map background selector -->
       <div class="filter-group">
         <label>Map style</label>
@@ -125,8 +130,7 @@
         Reset map view
       </button>
 
-      <div class="legend" id="legend"></div>
-      <div id="status"></div>
+      <hr class="divider" />
 
       <button id="aboutBtn">ℹ️ About this project</button>
     </div>
@@ -166,12 +170,8 @@
         <p>
           This tool addresses that gap by visualizing Pittsburgh Public Schools
           (PPS) attendance zones and showing school assignments for each address
-          across elementary, middle, and high school levels.
-        </p>
-        <p>
-          Each point represents a geocoded address within the PPS district.
-          Colors indicate the assigned school for the selected grade level using
-          the <strong>Color by</strong> option.
+          across elementary, middle, and high school levels. Each point
+          represents a geocoded address within the PPS district.
         </p>
         <p>
           Ultimately, this project aims to make school boundary information more
@@ -185,16 +185,12 @@
             for that specific address.
           </li>
           <li>
-            <strong>Search address</strong> — type an address to zoom to it and
+            <strong>Search address</strong> — enter an address to zoom to it and
             see its school assignments.
           </li>
           <li>
-            <strong>Color by</strong> — switch between Elementary/K8, Middle,
-            and High School coloring.
-          </li>
-          <li>
-            <strong>Map by type</strong> — show only addresses zoned for a given
-            school level.
+            <strong>Map by type</strong> — map address zones for a given school
+            level.
           </li>
           <li>
             <strong>Map by school</strong> — highlight all addresses assigned to
@@ -205,13 +201,15 @@
             public schools are located throughout the city.
           </li>
           <li>
+            <strong>Browse schools by grade level</strong> — filters the legend
+            to show Elementary/K8, Middle, or High Schools. Click any school
+            name in the legend to highlight all addresses assigned to that
+            school.
+          </li>
+          <li>
             <strong>Map style</strong> — choose from Street, Light, Dark, or
             Satellite backgrounds. Selecting Dark also switches the sidebar to a
             dark theme.
-          </li>
-          <li>
-            <strong>Legend</strong> — click a school name to highlight its
-            assigned addresses.
           </li>
         </ul>
         <h3>Data</h3>
@@ -295,7 +293,7 @@
           >.
         </p>
         <!-- placeholder that will be updated every time the github action script is run -->
-        <p><em>Data last updated: May 2026.</em></p>
+        <p><em>Data last updated: May 2026</em></p>
       </div>
     </div>
 
