@@ -232,6 +232,36 @@ def update_index_date(logger: logging.Logger) -> None:
     logger.info("Updated 'Data last updated' in index.html → %s", date_str)
 
 
+# ── README date update ────────────────────────────────────────
+
+
+def update_readme_date(logger: logging.Logger) -> None:
+    """
+    Rewrites the 'Data last updated' line in README.md with the current month
+    and year.
+
+    Searches for the pattern 'Data last updated: …' and replaces the date
+    portion with strftime('%B %Y') (e.g. 'May 2026').  No-ops if the pattern
+    is absent or the date is already current.
+
+    Args:
+        logger: Pipeline logger for status messages.
+    """
+    readme_path = ROOT / "README.md"
+    date_str = datetime.now().strftime("%B %Y")
+    content = readme_path.read_text(encoding="utf-8")
+    updated = re.sub(
+        r"(Data last updated: )[^\n.]+(\.)",
+        rf"\g<1>{date_str}\g<2>",
+        content,
+    )
+    if updated == content:
+        logger.info("README date already current — no change")
+        return
+    readme_path.write_text(updated, encoding="utf-8")
+    logger.info("Updated 'Data last updated' in README.md → %s", date_str)
+
+
 # ── Git push ─────────────────────────────────────────────────
 
 
@@ -264,6 +294,7 @@ def git_push_changes(logger: logging.Logger) -> None:
         str(ADDRESSES_SLIM),
         str(ADDRESSES_BIN),
         str(ROOT / "index.html"),
+        str(ROOT / "README.md"),
     ]
 
     subprocess.run(["git", "add", *files_to_stage], check=True, cwd=ROOT)
@@ -315,6 +346,7 @@ def main() -> None:
         step_scrape_addresses(logger)
         step_build_binary(logger)
         update_index_date(logger)
+        update_readme_date(logger)
         git_push_changes(logger)
     except (Exception, SystemExit) as exc:
         logger.exception("Pipeline failed: %s", exc)
