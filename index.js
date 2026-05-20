@@ -655,13 +655,10 @@ function resetAll() {
   currentPins = '';
   document.getElementById('schoolPins').value = '';
   updateSchoolPins('');
+  map.flyToBounds(PITTSBURGH_BOUNDS);
   withLoader('Resetting…', recolor);
 }
 
-// Escape clears the search from anywhere on the page
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') resetAll();
-});
 
 document.getElementById('clearAllBtn').addEventListener('click', resetAll);
 
@@ -1001,7 +998,12 @@ aboutModal.addEventListener('click', e => {
   if (e.target === aboutModal) aboutModal.classList.remove('open');
 });
 
-// Close on Escape
+// Escape: close modal if open, otherwise fully reset the app
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') aboutModal.classList.remove('open');
+  if (e.key !== 'Escape') return;
+  if (aboutModal.classList.contains('open')) {
+    aboutModal.classList.remove('open');
+  } else {
+    resetAll();
+  }
 });
