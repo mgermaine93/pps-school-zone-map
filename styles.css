@@ -397,6 +397,13 @@ margin-top: 8px;
 }
 
 /* ---- DARK BASEMAP MODE ---- */
+.dark-basemap #toggleBtn {
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.6);
+}
+
 .dark-basemap #controls {
   background: #1e1e1e;
   color: #e0e0e0;
