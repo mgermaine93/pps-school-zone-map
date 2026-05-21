@@ -107,4 +107,8 @@ This project was designed and developed by [Matt Germaine](https://www.linkedin.
 
 View the source code on [GitHub](https://github.com/mgermaine93/pps-school-zone-map).
 
+## Live URL
+
+[https://mgermaine93.github.io/pps-school-zone-map/](https://mgermaine93.github.io/pps-school-zone-map/)
+
 Data last updated: May 2026.
