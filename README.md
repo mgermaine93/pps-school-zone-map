@@ -18,12 +18,11 @@ Ultimately, this project aims to make school boundary information more transpare
 
 - **Click a point** — view detailed school assignments for that specific address.
 - **Search address** — type an address to zoom to it and see its school assignments.
-- **Color by** — switch between Elementary/K8, Middle, and High School coloring.
-- **Map by type** — show only addresses zoned for a given school level.
+- **Map by type** — map address zones for a given school level.
 - **Map by school** — highlight all addresses assigned to a specific school.
 - **Map school locations** — illustrate where various public schools are located throughout the city.
+- **Browse schools by grade level** - filters the legend to show Elementary/K8, Middle, or High Schools. Click any school name in the legend to highlight all addresses assigned to that school.
 - **Map style** — choose from `Street`, `Light`, `Dark`, or `Satellite` backgrounds. Selecting `Dark` also switches the sidebar to a dark theme.
-- **Legend** — click a school name to highlight its assigned addresses.
 
 ## Data
 

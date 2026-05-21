@@ -310,6 +310,7 @@ margin-top: 8px;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  pointer-events: none;
 }
 
 .modal-overlay.open {
