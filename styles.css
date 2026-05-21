@@ -315,6 +315,7 @@ margin-top: 8px;
 
 .modal-overlay.open {
   display: flex;
+  pointer-events: auto;
 }
 
 .modal-box {

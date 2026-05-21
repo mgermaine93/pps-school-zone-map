@@ -74,6 +74,13 @@ function updateResetViewBtn() {
 
 map.on('moveend', updateResetViewBtn);
 
+// On mobile a tap triggers both tooltip and popup simultaneously; dismiss
+// the tooltip as soon as its marker's popup opens.
+map.on('popupopen', e => {
+  const marker = e.popup._source;
+  if (marker?.getTooltip()) marker.closeTooltip();
+});
+
 /**
  * Retrieves or generates a deterministic HSL color for a school.
  *
