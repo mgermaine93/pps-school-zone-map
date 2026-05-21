@@ -75,6 +75,28 @@ pps-school-zone-map/
 └── sw.js                         # Service worker for offline support and asset caching
 ```
 
+## Running Locally
+
+No build step is required. The pre-built data files are committed to the repository, so the app is ready to use immediately after cloning.
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/mgermaine93/pps-school-zone-map.git
+   cd pps-school-zone-map
+   ```
+
+2. **Serve the directory** with any static file server
+
+   ```bash
+   python3 -m http.server 8000
+   # or: npx serve .
+   ```
+
+3. Open `http://localhost:8000` in a browser.
+
+To regenerate the underlying data from scratch, see the [pipeline README](pipeline/README.md).
+
 ## Disclaimer
 
 - This tool draws from official sources (e.g., the PPS portal), but is intended for informational use and should not be considered an official PPS source.

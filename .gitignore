@@ -3,11 +3,22 @@ venv/
 __pycache__/
 .pytest_cache/
 .DS_Store
+*.pyc
+
+# Environment
+.env
 
 # large files that don't need to be committed.
 logs/
 data/addresses_full.json
 backups/
 
+# Test coverage
+.coverage
+htmlcov/
+
+# Node
 node_modules/
 tests/js/node_modules/
+npm-debug.log*
+tests/__pycache__

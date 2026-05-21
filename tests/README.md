@@ -15,8 +15,11 @@ Contains the project's automated test suite.
 ## Running the tests
 
 ```bash
-# Python tests
-pip install -r requirements-dev.txt   # first time only
+# Python tests (from the project root)
+python3 -m venv venv
+source venv/bin/activate              # Windows: venv\Scripts\activate
+pip install -r requirements.txt       # pipeline dependencies (aiohttp, phonenumbers, etc.)
+pip install -r requirements-dev.txt   # pytest
 pytest tests/ -v
 
 # JavaScript tests
