@@ -993,10 +993,17 @@ modalClose.addEventListener('click', () => {
   aboutModal.classList.remove('open');
 });
 
-// Close on clicking outside the modal box (stopPropagation from the box is
-// more reliable than e.target checks on iOS Safari)
+// Close on clicking/tapping outside the modal box.
+// touchend is added alongside click because iOS Safari doesn't reliably fire
+// click on non-interactive overlay elements. preventDefault suppresses the
+// ghost click iOS synthesizes ~300ms after touchend.
 aboutModal.addEventListener('click', () => aboutModal.classList.remove('open'));
+aboutModal.addEventListener('touchend', e => {
+  e.preventDefault();
+  aboutModal.classList.remove('open');
+});
 document.querySelector('#aboutModal .modal-box').addEventListener('click', e => e.stopPropagation());
+document.querySelector('#aboutModal .modal-box').addEventListener('touchend', e => e.stopPropagation());
 
 // Escape: close modal if open, otherwise fully reset the app
 document.addEventListener('keydown', e => {
