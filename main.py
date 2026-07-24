@@ -10,7 +10,8 @@ Pipeline steps:
 Logs to logs/pipeline_YYYYMMDD_HHMMSS.log (file is kept locally; not committed).
 
 Environment variables:
-  SKIP_GIT_PUSH=1   — run the pipeline without committing or pushing (useful locally)
+  SKIP_GIT_PUSH=1      — run the pipeline without committing or pushing (useful locally)
+  PIPELINE_YEAR=2027   — target a specific GuideK12 year slug instead of 'current'
 """
 
 from __future__ import annotations
@@ -28,11 +29,24 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent
 
-SCHOOLS_PATH = ROOT / "data" / "schools.json"
 ADDRESSES_INPUT = ROOT / "data" / "pittsburgh_addresses.json"
-ADDRESSES_FULL = ROOT / "data" / "addresses_full.json"
-ADDRESSES_SLIM = ROOT / "data" / "addresses_slim.json"
-ADDRESSES_BIN = ROOT / "data" / "addresses.bin"
+
+
+def data_paths(year: str) -> dict:
+    """Returns year-specific paths for all pipeline output files."""
+    if year == "current":
+        return {
+            "schools": ROOT / "data" / "schools.json",
+            "full":    ROOT / "data" / "addresses_full.json",
+            "slim":    ROOT / "data" / "addresses_slim.json",
+            "bin":     ROOT / "data" / "addresses.bin",
+        }
+    return {
+        "schools": ROOT / "data" / f"schools-{year}.json",
+        "full":    ROOT / "data" / f"addresses_full-{year}.json",
+        "slim":    ROOT / "data" / f"addresses_slim-{year}.json",
+        "bin":     ROOT / "data" / f"addresses-{year}.bin",
+    }
 
 
 # ── Logging ───────────────────────────────────────────────────
@@ -79,7 +93,7 @@ def setup_logging() -> tuple[logging.Logger, str]:
 # ── Backup ───────────────────────────────────────────────────
 
 
-def backup_data_files(logger: logging.Logger, timestamp: str) -> None:
+def backup_data_files(logger: logging.Logger, timestamp: str, paths: dict) -> None:
     """
     Copies existing data files to a timestamped backup directory before the
     pipeline overwrites them.
@@ -95,13 +109,9 @@ def backup_data_files(logger: logging.Logger, timestamp: str) -> None:
         timestamp: Compact timestamp string (YYYYMMDD_HHMMSS) used as the
             backup subdirectory name, shared with the log file so the two are
             trivially correlated.
+        paths: Year-specific output file paths returned by data_paths().
     """
-    files_to_backup = [
-        SCHOOLS_PATH,
-        ADDRESSES_FULL,
-        ADDRESSES_SLIM,
-        ADDRESSES_BIN,
-    ]
+    files_to_backup = list(paths.values())
 
     existing = [f for f in files_to_backup if f.exists()]
     if not existing:
@@ -120,18 +130,20 @@ def backup_data_files(logger: logging.Logger, timestamp: str) -> None:
 # ── Pipeline steps ────────────────────────────────────────────
 
 
-def step_refresh_schools(logger: logging.Logger) -> None:
+def step_refresh_schools(logger: logging.Logger, year: str, paths: dict) -> None:
     """
-    Pipeline step 1: fetches the current school list from GuideK12 and writes
-    it to disk.
+    Pipeline step 1: fetches the school list for the given year from GuideK12
+    and writes it to disk.
 
     Delegates to pipeline/refresh_schools.fetch(), which makes a
     session-authenticated POST to the GuideK12 API, normalizes the response
-    into the preprocessed schools.json format, and writes the result to
-    SCHOOLS_PATH.
+    into the preprocessed schools.json format, and writes the result to the
+    year-specific schools path.
 
     Args:
         logger: Pipeline logger for progress messages.
+        year: GuideK12 school year slug, e.g. 'current' or '2027'.
+        paths: Year-specific output file paths returned by data_paths().
 
     Raises:
         SystemExit: Propagated from refresh_schools.fetch() if the API returns
@@ -139,12 +151,12 @@ def step_refresh_schools(logger: logging.Logger) -> None:
     """
     from pipeline.refresh_schools import fetch
 
-    logger.info("Step 1/3  Refreshing school list from GuideK12...")
-    asyncio.run(fetch(str(SCHOOLS_PATH)))
-    logger.info("Step 1/3  Done → %s", SCHOOLS_PATH)
+    logger.info("Step 1/3  Refreshing school list from GuideK12 (year=%s)...", year)
+    asyncio.run(fetch(str(paths["schools"]), year=year))
+    logger.info("Step 1/3  Done → %s", paths["schools"])
 
 
-def step_scrape_addresses(logger: logging.Logger) -> None:
+def step_scrape_addresses(logger: logging.Logger, year: str, paths: dict) -> None:
     """
     Pipeline step 2: maps every Pittsburgh address to its assigned schools via
     the GuideK12 API.
@@ -153,11 +165,13 @@ def step_scrape_addresses(logger: logging.Logger) -> None:
     prevents a normal import statement.  Runs the async scraper with
     concurrency=50, which POSTs each address's lat/lng to the GuideK12 spatial
     API and records the returned school assignments.  Writes both a full JSON
-    file (ADDRESSES_FULL) and a compact slim JSON file (ADDRESSES_SLIM).
+    file and a compact slim JSON file at year-specific paths.
     Expect this step to take several minutes for the full ~116k-address dataset.
 
     Args:
         logger: Pipeline logger for progress messages.
+        year: GuideK12 school year slug, e.g. 'current' or '2027'.
+        paths: Year-specific output file paths returned by data_paths().
     """
     # scraper-v2.py has a hyphen so it can't be imported with normal import syntax
     spec = importlib.util.spec_from_file_location(
@@ -168,37 +182,39 @@ def step_scrape_addresses(logger: logging.Logger) -> None:
 
     logger.info(
         "Step 2/3  Mapping addresses to schools "
-        "(concurrency=50, this may take several minutes)..."
+        "(year=%s, concurrency=50, this may take several minutes)...", year
     )
     asyncio.run(
         scraper.run(
             str(ADDRESSES_INPUT),
-            str(SCHOOLS_PATH),
-            str(ADDRESSES_FULL),
+            str(paths["schools"]),
+            str(paths["full"]),
             concurrency=50,
-            slim_output_path=str(ADDRESSES_SLIM),
+            slim_output_path=str(paths["slim"]),
+            year=year,
         )
     )
-    logger.info("Step 2/3  Done → %s", ADDRESSES_SLIM)
+    logger.info("Step 2/3  Done → %s", paths["slim"])
 
 
-def step_build_binary(logger: logging.Logger) -> None:
+def step_build_binary(logger: logging.Logger, paths: dict) -> None:
     """
     Pipeline step 3: encodes addresses_slim.json into the compact PPSb binary
     format.
 
     Delegates to pipeline/build_binary.build(), which produces a binary file
     roughly 3x smaller than the slim JSON and parseable in near-zero time by
-    the browser's DataView API.  The output is written to ADDRESSES_BIN.
+    the browser's DataView API.  Output is written to the year-specific bin path.
 
     Args:
         logger: Pipeline logger for progress messages.
+        paths: Year-specific output file paths returned by data_paths().
     """
     from pipeline.build_binary import build
 
     logger.info("Step 3/3  Building binary from slim JSON...")
-    build(str(ADDRESSES_SLIM), str(ADDRESSES_BIN))
-    logger.info("Step 3/3  Done → %s", ADDRESSES_BIN)
+    build(str(paths["slim"]), str(paths["bin"]))
+    logger.info("Step 3/3  Done → %s", paths["bin"])
 
 
 # ── Index date update ─────────────────────────────────────────
@@ -265,14 +281,14 @@ def update_readme_date(logger: logging.Logger) -> None:
 # ── Git push ─────────────────────────────────────────────────
 
 
-def git_push_changes(logger: logging.Logger) -> None:
+def git_push_changes(logger: logging.Logger, paths: dict) -> None:
     """
     Stages updated data files and index.html, commits, and pushes to the remote.
 
-    Stages schools.json, addresses_slim.json, addresses.bin, and index.html.
-    Skips the commit entirely if 'git diff --cached' reports no changes, so a
-    month where the source data is unchanged produces no empty commit.  The
-    commit message includes the current date for traceability.
+    Stages the year-specific schools, slim, and bin files alongside index.html
+    and README.md.  Skips the commit entirely if 'git diff --cached' reports no
+    changes, so a month where the source data is unchanged produces no empty
+    commit.  The commit message includes the current date for traceability.
 
     Set the environment variable SKIP_GIT_PUSH=1 to bypass this step entirely,
     which is useful when running the pipeline locally to inspect data output
@@ -280,6 +296,7 @@ def git_push_changes(logger: logging.Logger) -> None:
 
     Args:
         logger: Pipeline logger for status messages.
+        paths: Year-specific output file paths returned by data_paths().
 
     Raises:
         subprocess.CalledProcessError: If git add, commit, or push exits
@@ -290,9 +307,9 @@ def git_push_changes(logger: logging.Logger) -> None:
         return
 
     files_to_stage = [
-        str(SCHOOLS_PATH),
-        str(ADDRESSES_SLIM),
-        str(ADDRESSES_BIN),
+        str(paths["schools"]),
+        str(paths["slim"]),
+        str(paths["bin"]),
         str(ROOT / "index.html"),
         str(ROOT / "README.md"),
     ]
@@ -337,17 +354,19 @@ def main() -> None:
     time is logged on successful completion.
     """
     logger, timestamp = setup_logging()
-    logger.info("=== PPS school data refresh pipeline started ===")
+    year = os.getenv("PIPELINE_YEAR", "current")
+    paths = data_paths(year)
+    logger.info("=== PPS school data refresh pipeline started (year=%s) ===", year)
     start = datetime.now()
 
     try:
-        backup_data_files(logger, timestamp)
-        step_refresh_schools(logger)
-        step_scrape_addresses(logger)
-        step_build_binary(logger)
+        backup_data_files(logger, timestamp, paths)
+        step_refresh_schools(logger, year, paths)
+        step_scrape_addresses(logger, year, paths)
+        step_build_binary(logger, paths)
         update_index_date(logger)
         update_readme_date(logger)
-        git_push_changes(logger)
+        git_push_changes(logger, paths)
     except (Exception, SystemExit) as exc:
         logger.exception("Pipeline failed: %s", exc)
         sys.exit(1)

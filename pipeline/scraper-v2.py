@@ -28,7 +28,12 @@ import aiohttp
 
 # ── Configuration ─────────────────────────────────────────────
 
-API_URL = "https://app.guidek12.com/pittsburghpa/school_search/current/api.json"
+BASE = "https://app.guidek12.com/pittsburghpa/school_search/"
+
+
+def _urls(year: str) -> tuple[str, str]:
+    portal = f"{BASE}{year}/"
+    return portal, f"{portal}api.json"
 
 # ── Address extraction ───────────────────────────────────────
 
@@ -151,7 +156,7 @@ def load_school_catalog(path: str) -> dict:
 # ── API lookup ───────────────────────────────────────────────
 
 
-async def lookup_by_point(session, lat, lng):
+async def lookup_by_point(session, lat, lng, api_url, portal_url, school_types):
     """
     Queries the GuideK12 API for schools assigned to a geographic point.
 
@@ -166,6 +171,11 @@ async def lookup_by_point(session, lat, lng):
         lat (float): Latitude of the address point.
         lng (float): Longitude of the address point. Sent first in WKT format
             per the GeoJSON / WKT convention (x before y).
+        api_url (str): Full GuideK12 API endpoint URL.
+        portal_url (str): GuideK12 portal URL, used as the Referer header.
+        school_types (list[str]): School type codes to request, derived from
+            the loaded school catalog so the payload matches what the API
+            actually supports for the given year.
 
     Returns:
         list[dict]: Raw school result objects from the API, or an empty list
@@ -175,7 +185,7 @@ async def lookup_by_point(session, lat, lng):
         "mode": "schools_spatial",
         "attr": {
             "SCHOOL_TYPE": {
-                "values": ["ELEM", "K8", "MIDD", "HIGH", "ONLINE", "BOARD"],
+                "values": school_types,
                 "mode": "or",
                 "itemized": False,
             }
@@ -189,15 +199,15 @@ async def lookup_by_point(session, lat, lng):
         "zones": ["attendance", "early", "online", "board"],
     }
 
-    HEADERS = {
+    headers = {
         "Content-Type": "application/json; charset=UTF-8",
         "Origin": "https://app.guidek12.com",
-        "Referer": "https://app.guidek12.com/pittsburghpa/school_search/current/",
+        "Referer": portal_url,
         "X-Requested-With": "XMLHttpRequest",
         "User-Agent": "Mozilla/5.0",
     }
 
-    async with session.post(API_URL, json=payload, headers=HEADERS) as resp:
+    async with session.post(api_url, json=payload, headers=headers) as resp:
         text = await resp.text()
 
         try:
@@ -210,14 +220,15 @@ async def lookup_by_point(session, lat, lng):
             print(text[:500])
             return []
 
-        return data.get("result", {}).get("school_results", [])
+        return (data.get("result") or {}).get("school_results", [])
 
 
 # ── Worker ───────────────────────────────────────────────────
 
 
 async def worker(
-    queue, session, school_map, progress, total, output_path, file_lock, is_first
+    queue, session, school_map, progress, total, output_path, file_lock, is_first,
+    api_url, portal_url, school_types,
 ):
     """
     Consumes address records from the queue and appends school lookup results to disk.
@@ -236,6 +247,8 @@ async def worker(
         total (int): Total number of records, used to compute progress percentage.
         output_path (str): Path to the output NDJSON file.
         file_lock (asyncio.Lock): Lock that serializes writes to output_path.
+        api_url (str): Full GuideK12 API endpoint URL.
+        portal_url (str): GuideK12 portal URL, used as the Referer header.
     """
     while True:
         try:
@@ -250,7 +263,7 @@ async def worker(
             result = {"schools": [], "error": "Missing lat/lng"}
         else:
             try:
-                raw_results = await lookup_by_point(session, lat, lng)
+                raw_results = await lookup_by_point(session, lat, lng, api_url, portal_url, school_types)
 
                 schools = []
 
@@ -320,6 +333,7 @@ async def run(
     concurrency: int = 50,
     limit: int | None = None,
     slim_output_path: str | None = None,
+    year: str = "current",
 ):
     """
     Orchestrates the full address-to-school lookup pipeline.
@@ -338,6 +352,8 @@ async def run(
         concurrency (int): Maximum number of simultaneous API requests. Default 50.
         limit (int | None): If set, caps the number of addresses processed.
             Default None (process all).
+        year (str): GuideK12 school year slug, e.g. 'current' or '2027'.
+            Determines which portal URL is used. Defaults to 'current'.
     """
     records = extract_addresses_from_geojson(input_path)
 
@@ -361,19 +377,19 @@ async def run(
         f.write("[")
 
     school_map = load_school_catalog(school_path)
+    school_types = sorted({v["type"] for v in school_map.values() if v.get("type")})
+    portal_url, api_url = _urls(year)
 
-    HEADERS = {
+    session_headers = {
         "User-Agent": "Mozilla/5.0",
         "Origin": "https://app.guidek12.com",
-        "Referer": "https://app.guidek12.com/pittsburghpa/school_search/current/",
+        "Referer": portal_url,
     }
 
-    async with aiohttp.ClientSession(headers=HEADERS) as session:
+    async with aiohttp.ClientSession(headers=session_headers) as session:
 
         # Establish session cookies
-        async with session.get(
-            "https://app.guidek12.com/pittsburghpa/school_search/current/"
-        ) as resp:
+        async with session.get(portal_url) as resp:
             await resp.text()
 
         workers = [
@@ -387,6 +403,9 @@ async def run(
                     output_path,
                     file_lock,
                     is_first,
+                    api_url,
+                    portal_url,
+                    school_types,
                 )
             )
             for _ in range(min(concurrency, total))
@@ -496,6 +515,7 @@ def main():
         --output / -o  Output NDJSON file path. Default: new_pps_schools_3.json.
         --concurrency / -c  Max concurrent API requests. Default: 50.
         --limit / -l   Cap on number of addresses to process. Default: no limit.
+        --year / -y    GuideK12 school year slug. Default: current.
     """
     parser = argparse.ArgumentParser(
         description="Fast PPS school lookup using GuideK12 API"
@@ -512,6 +532,8 @@ def main():
     )
     parser.add_argument("--concurrency", "-c", type=int, default=50)
     parser.add_argument("--limit", "-l", type=int, default=None)
+    parser.add_argument("--year", "-y", default="current",
+                        help="GuideK12 school year slug (default: current). Use e.g. '2027' for future data.")
 
     args = parser.parse_args()
 
@@ -531,6 +553,7 @@ def main():
             args.concurrency,
             args.limit,
             args.slim_output or None,
+            year=args.year,
         )
     )
 

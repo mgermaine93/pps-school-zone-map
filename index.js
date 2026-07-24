@@ -81,46 +81,62 @@ map.on('popupopen', e => {
   if (marker?.getTooltip()) marker.closeTooltip();
 });
 
+// Linearly interpolates between Color Brewer hex anchor colors to produce a
+// palette of targetSize evenly-spaced entries. Used to expand the ELEM palette
+// so all elementary schools get a unique shade without cycling.
+function expandPalette(anchors, targetSize) {
+  const parse = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+  const fmt   = ([r,g,b]) => '#' + [r,g,b].map(v => Math.round(v).toString(16).padStart(2,'0')).join('');
+  const rgb = anchors.map(parse);
+  return Array.from({ length: targetSize }, (_, i) => {
+    const t  = i / (targetSize - 1) * (rgb.length - 1);
+    const lo = Math.floor(t), hi = Math.min(lo + 1, rgb.length - 1), f = t - lo;
+    return fmt(rgb[lo].map((c, j) => c + f * (rgb[hi][j] - c)));
+  });
+}
+
+// Color Brewer sequential palettes, all marked colorblind-safe on colorbrewer2.org.
+// Each type gets its own hue family so type groups stay visually distinct across
+// "Color by" modes. Greens and oranges are intentionally avoided — they are the
+// most common problem pair under deuteranopia/protanopia.
+//   ELEM   → Blues   (expanded to 40 via interpolation — avoids cycling across ~30 schools)
+//   K8     → Purples (8 anchors, ~5 schools — no expansion needed)
+//   MIDD   → Reds    (shown in isolation from ELEM/K8)
+//   HIGH   → RdPu    (pink-magenta, shown in isolation)
+//   ONLINE → Greys   (neutral; typically only 1–2 schools)
+const CB_PALETTES = {
+  ELEM:   expandPalette(['#08306b','#08519c','#2171b5','#4292c6','#6baed6','#9ecae1','#c6dbef','#deebf7'], 40),
+  K8:     ['#3f007d','#54278f','#6a51a3','#807dba','#9e9ac8','#bcbddc','#dadaeb','#efedf5'],
+  MIDD:   ['#67000d','#a50f15','#cb181d','#ef3b2c','#fb6a4a','#fc9272','#fcbba1'],
+  HIGH:   ['#49006a','#7a0177','#ae017e','#dd3497','#f768a1','#fa9fb5','#fcc5c0'],
+  ONLINE: ['#252525','#525252','#737373','#969696','#bdbdbd','#d9d9d9'],
+};
+
+const DATA_CONFIGS = {
+  current: { bin: 'data/addresses.bin',      schools: 'data/schools.json' },
+  '2027':  { bin: 'data/addresses-2027.bin', schools: 'data/schools-2027.json' },
+};
+
 /**
- * Retrieves or generates a deterministic HSL color for a school.
+ * Retrieves or assigns a Color Brewer color for a school.
  *
  * Colors are assigned once per school name and cached in schoolColorMap.
- * Each school type owns a fixed hue range so type groups remain visually
- * distinct even when the "Color by" mode changes. Lightness alternates
- * across three values to maximize contrast between schools in the same type.
+ * Each school type draws from its own Color Brewer sequential palette,
+ * cycling through it if the number of schools in that type exceeds the
+ * palette length.
  *
  * @param {string} schoolName - The school's display name, used as the cache key.
  * @param {string} type - School type code: 'ELEM', 'K8', 'MIDD', 'HIGH', or 'ONLINE'.
- * @returns {{ color: string, _type: string }} Cached entry with the HSL color
+ * @returns {{ color: string, _type: string }} Cached entry with the hex color
  *   string and the type it was registered under.
  */
 function getSchoolColor(schoolName, type) {
   if (schoolColorMap[schoolName]) return schoolColorMap[schoolName];
 
-  // Each type gets its own hue range so types are visually distinct
-  // even if a user switches Color By modes
-  // Hue ranges anchored to Okabe-Ito safe values so types stay distinguishable
-  // under deuteranopia/protanopia (red-green colorblindness, ~8% of males).
-  // ELEM (teal) and K8 (yellow-orange) are perceptually opposite in all CVD types.
-  const hueRanges = {
-    ELEM:   [140, 185],  // teal-greens  → appear teal/cyan in deuteranopia
-    K8:     [35,  65],   // yellow-orange → appear yellow in deuteranopia
-    MIDD:   [210, 255],  // blues         → preserved across all CVD types
-    HIGH:   [300, 345],  // purples       → appear blue-purple in deuteranopia
-    ONLINE: [18,  34],   // vermilion     → appear orange in deuteranopia
-  };
-
-  const [hueMin, hueMax] = hueRanges[type] || [0, 360];
-
-  // Count how many schools of this type already have colors
+  const palette = CB_PALETTES[type] || CB_PALETTES.ELEM;
   const typeCount = Object.entries(schoolColorMap)
     .filter(([, v]) => v._type === type).length;
-
-  // Spread evenly within the hue range, alternating lightness
-  const steps = 12; // max schools per type before wrapping
-  const hue = hueMin + ((typeCount * (hueMax - hueMin)) / steps) % (hueMax - hueMin);
-  const lightness = 38 + (typeCount % 3) * 12; // 38%, 50%, 62%
-  const color = `hsl(${hue.toFixed(1)}, 75%, ${lightness}%)`;
+  const color = palette[typeCount % palette.length];
 
   schoolColorMap[schoolName] = { color, _type: type };
   return schoolColorMap[schoolName];
@@ -233,182 +249,253 @@ let schoolsByName = {};
 let currentColorBy = "ELEM";
 let currentBasemapKey = 'osm';
 let currentPins = '';
+let currentYear = 'current';
+let searchZoneSchoolNames = null;
 
 // --------------------
 // LOAD DATA
 // --------------------
-fetch('data/schools.json')
-  .then(res => res.json())
-  .then(schools => {
-    schools.forEach(s => {
-      if (s.lat != null) schoolsByName[s.name] = s;
-    });
-  })
-  .catch(() => {});  // non-critical — address search still works without it
 
-fetch('data/addresses.bin')
-  .then(res => res.arrayBuffer())
-  .then(buf => {
-    const view = new DataView(buf);
-    const dec  = new TextDecoder();
-    let pos = 0;
+/**
+ * Loads the address and school datasets for the given year, tears down any
+ * previously rendered markers, and re-renders the map from scratch.
+ *
+ * All existing address markers, school pins, and caches are cleared before
+ * fetching. State variables (currentColorBy, currentSchoolFilter, etc.) are
+ * read as-is so the caller can set them before invoking loadData — on first
+ * page load they are restored from the URL hash; on year-change they are reset
+ * by the yearSelect handler.
+ *
+ * @param {string} year - Key into DATA_CONFIGS ('current' or '2027').
+ */
+function loadData(year) {
+  const config = DATA_CONFIGS[year] || DATA_CONFIGS.current;
 
-    // Header
-    pos += 4; // skip magic 'PPSb'
-    const schoolNameCount = view.getUint16(pos, true); pos += 2;
-    const typeCount       = view.getUint8(pos);        pos += 1;
-    const zoneCount       = view.getUint8(pos);        pos += 1;
-    const addressCount    = view.getUint32(pos, true); pos += 4;
+  // Remove all existing address markers
+  allMarkers.forEach(({ marker }) => map.removeLayer(marker));
+  allMarkers = [];
+  allAddresses = [];
 
-    function readLStr() {
-      const len = view.getUint8(pos); pos += 1;
-      const str = dec.decode(new Uint8Array(buf, pos, len));
-      pos += len;
-      return str;
-    }
+  // Clear caches so recolor() starts fresh
+  Object.keys(schoolColorMap).forEach(k => delete schoolColorMap[k]);
+  Object.keys(schoolsByName).forEach(k => delete schoolsByName[k]);
+  searchZoneSchoolNames = null;
 
-    const schoolNames = Array.from({ length: schoolNameCount }, readLStr);
-    const types       = Array.from({ length: typeCount },       readLStr);
-    const zones       = Array.from({ length: zoneCount },       readLStr);
+  // Clear all school-related map markers
+  clearSearchMarker();
+  clearSchoolMarkers();
+  clearFilterSchoolMarker();
+  allSchoolMarkers.forEach(m => map.removeLayer(m));
+  allSchoolMarkers = [];
 
-    const addresses = [];
-    for (let i = 0; i < addressCount; i++) {
-      const lat         = view.getInt32(pos, true) / 100000; pos += 4;
-      const lng         = view.getInt32(pos, true) / 100000; pos += 4;
-      const schoolCount = view.getUint8(pos);                pos += 1;
+  // Reset school dropdown to just the "All schools" placeholder
+  const schoolSel = document.getElementById('schoolFilter');
+  while (schoolSel.options.length > 1) schoolSel.remove(1);
 
-      const schools = [];
-      for (let j = 0; j < schoolCount; j++) {
-        const nameIdx = view.getUint8(pos); pos += 1;
-        const typeIdx = view.getUint8(pos); pos += 1;
-        const zoneIdx = view.getUint8(pos); pos += 1;
-        schools.push({
-          name:  schoolNames[nameIdx],
-          type:  types[typeIdx],
-          zones: zones[zoneIdx].split(','),
-        });
+  // Reset legend and status
+  document.getElementById('legend').innerHTML = '';
+  document.getElementById('status').textContent = '';
+
+  // Show loader
+  const loaderEl    = document.getElementById('loader');
+  const loaderText  = document.getElementById('loaderText');
+  const progressBar = document.getElementById('loadProgressBar');
+  loaderEl.style.display = 'flex';
+  loaderText.textContent = 'Loading…';
+  progressBar.style.width = '0%';
+
+  // Fetch school metadata (non-critical — address search still works without it)
+  fetch(config.schools)
+    .then(res => res.json())
+    .then(schools => {
+      schools.forEach(s => { if (s.lat != null) schoolsByName[s.name] = s; });
+    })
+    .catch(() => {});
+
+  // Fetch and render the address binary
+  fetch(config.bin)
+    .then(res => res.arrayBuffer())
+    .then(buf => {
+      const view = new DataView(buf);
+      const dec  = new TextDecoder();
+      let pos = 0;
+
+      // Header
+      pos += 4; // skip magic 'PPSb'
+      const schoolNameCount = view.getUint16(pos, true); pos += 2;
+      const typeCount       = view.getUint8(pos);        pos += 1;
+      const zoneCount       = view.getUint8(pos);        pos += 1;
+      const addressCount    = view.getUint32(pos, true); pos += 4;
+
+      function readLStr() {
+        const len = view.getUint8(pos); pos += 1;
+        const str = dec.decode(new Uint8Array(buf, pos, len));
+        pos += len;
+        return str;
       }
 
-      const idLen   = view.getUint16(pos, true); pos += 2;
-      const id      = dec.decode(new Uint8Array(buf, pos, idLen)); pos += idLen;
+      const schoolNames = Array.from({ length: schoolNameCount }, readLStr);
+      const types       = Array.from({ length: typeCount },       readLStr);
+      const zones       = Array.from({ length: zoneCount },       readLStr);
 
-      const addrLen = view.getUint16(pos, true); pos += 2;
-      const address = dec.decode(new Uint8Array(buf, pos, addrLen)); pos += addrLen;
+      const addresses = [];
+      for (let i = 0; i < addressCount; i++) {
+        const lat         = view.getInt32(pos, true) / 100000; pos += 4;
+        const lng         = view.getInt32(pos, true) / 100000; pos += 4;
+        const schoolCount = view.getUint8(pos);                pos += 1;
 
-      addresses.push({ id, address, lat, lng, schools });
-    }
-    allAddresses = addresses;
+        const schools = [];
+        for (let j = 0; j < schoolCount; j++) {
+          const nameIdx = view.getUint8(pos); pos += 1;
+          const typeIdx = view.getUint8(pos); pos += 1;
+          const zoneIdx = view.getUint8(pos); pos += 1;
+          schools.push({
+            name:  schoolNames[nameIdx],
+            type:  types[typeIdx],
+            zones: zones[zoneIdx].split(','),
+          });
+        }
 
-    // Collect unique school name→type pairs in one pass (no worker needed —
-    // the structured-clone round trip cost exceeded any off-thread benefit)
-    const allSchoolsMap = new Map();
-    addresses.forEach(point => {
-      point.schools.forEach(s => {
-        if (!allSchoolsMap.has(s.name)) allSchoolsMap.set(s.name, s.type);
+        const idLen   = view.getUint16(pos, true); pos += 2;
+        const id      = dec.decode(new Uint8Array(buf, pos, idLen)); pos += idLen;
+
+        const addrLen = view.getUint16(pos, true); pos += 2;
+        const address = dec.decode(new Uint8Array(buf, pos, addrLen)); pos += addrLen;
+
+        addresses.push({ id, address, lat, lng, schools });
+      }
+      allAddresses = addresses;
+
+      // Collect unique school name→type pairs in one pass (no worker needed —
+      // the structured-clone round trip cost exceeded any off-thread benefit)
+      const allSchoolsMap = new Map();
+      addresses.forEach(point => {
+        point.schools.forEach(s => {
+          if (!allSchoolsMap.has(s.name)) allSchoolsMap.set(s.name, s.type);
+        });
       });
+
+      allSchoolsMap.forEach((type, name) => getSchoolColor(name, type));
+      buildSchoolDropdown([...allSchoolsMap.keys()].sort());
+      syncTypeOptions(new Set(allSchoolsMap.values()));
+
+      // Sync school dropdown if a filter was already set before data arrived
+      if (currentSchoolFilter) {
+        document.getElementById('schoolFilter').value = currentSchoolFilter;
+      }
+
+      // Add markers in chunks to keep the UI responsive during load
+      const CHUNK_SIZE = 5000;
+      let i = 0;
+
+      /**
+       * Renders one batch of address markers onto the map, then yields to the
+       * browser via requestAnimationFrame before processing the next batch.
+       *
+       * Splitting rendering into chunks prevents the UI from locking up during
+       * the initial load of ~116,000 markers. Popup HTML is generated lazily
+       * (bound as a factory function) so it is only built when a user clicks a
+       * point, not for all markers at load time.
+       */
+      function processChunk() {
+        const end = Math.min(i + CHUNK_SIZE, addresses.length);
+        for (; i < end; i++) {
+          const point = addresses[i];
+
+          const marker = L.circleMarker([point.lat, point.lng], {
+            renderer,
+            radius: markerRadius(),
+            color: '#aaa',
+            weight: 1,
+            fillColor: '#aaa',
+            fillOpacity: 0.5
+          });
+
+          const { street, city } = splitAddress(point.address);
+          const tooltipHTML = city ? `${street}<br>${city}` : street;
+          marker.bindTooltip(tooltipHTML, { sticky: true, className: 'addr-tooltip' });
+
+          // Generate popup HTML only on click, not for all 116k markers at load time
+          marker.bindPopup(() => {
+            const schoolList = [...point.schools]
+              .sort((a, b) => TYPE_PRIORITY.indexOf(a.type) - TYPE_PRIORITY.indexOf(b.type))
+              .map(s => `<li><b>${s.name}</b> <span class="popup-school-type">(${TYPE_LABELS[s.type] || s.type})</span></li>`)
+              .join('');
+            return `
+              <b>${street}</b>${city ? `<br><span class="popup-addr">${city}</span>` : ''}
+              <ul style="margin:6px 0 0;padding-left:16px;font-size:12px">${schoolList}</ul>
+            `;
+          });
+
+          marker.addTo(map);
+          allMarkers.push({ marker, point });
+        }
+
+        if (i < addresses.length) {
+          const pct = (i / addresses.length * 100).toFixed(1);
+          loaderText.textContent = `Loading ${i.toLocaleString()} / ${addresses.length.toLocaleString()} addresses…`;
+          progressBar.style.width = `${pct}%`;
+          requestAnimationFrame(processChunk);
+        } else {
+          progressBar.style.width = '100%';
+          if (currentPins) updateSchoolPins(currentPins);
+          recolor();
+          updateStatus();
+          loaderEl.style.display = 'none';
+        }
+      }
+
+      requestAnimationFrame(processChunk);
+    })
+    .catch(err => {
+      console.error('Error loading data:', err);
+      loaderEl.style.display = 'none';
     });
+}
 
-    allSchoolsMap.forEach((type, name) => getSchoolColor(name, type));
-    buildSchoolDropdown([...allSchoolsMap.keys()].sort());
+// Read all state from the URL hash, then kick off the initial load.
+// Year is read first because it determines which dataset to fetch;
+// other params are applied before loadData so they take effect at first render.
+{
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const hashYear    = params.get('year');
+  const hashColorBy = params.get('colorBy');
+  const hashType    = params.get('type');
+  const hashSchool  = params.get('school');
+  const hashBasemap = params.get('basemap');
+  const hashPins    = params.get('pins');
 
-    // Add markers in chunks to keep the UI responsive during load
-    const CHUNK_SIZE = 5000;
-    const loaderText    = document.getElementById('loaderText');
-    const progressBar   = document.getElementById('loadProgressBar');
-    let i = 0;
-
-    /**
-     * Renders one batch of address markers onto the map, then yields to the
-     * browser via requestAnimationFrame before processing the next batch.
-     *
-     * Splitting rendering into chunks prevents the UI from locking up during
-     * the initial load of ~116,000 markers. Popup HTML is generated lazily
-     * (bound as a factory function) so it is only built when a user clicks a
-     * point, not for all markers at load time.
-     */
-    function processChunk() {
-      const end = Math.min(i + CHUNK_SIZE, addresses.length);
-      for (; i < end; i++) {
-        const point = addresses[i];
-
-        const marker = L.circleMarker([point.lat, point.lng], {
-          renderer,
-          radius: markerRadius(),
-          color: '#aaa',
-          weight: 1,
-          fillColor: '#aaa',
-          fillOpacity: 0.8
-        });
-
-        const { street, city } = splitAddress(point.address);
-        const tooltipHTML = city ? `${street}<br>${city}` : street;
-        marker.bindTooltip(tooltipHTML, { sticky: true, className: 'addr-tooltip' });
-
-        // Generate popup HTML only on click, not for all 116k markers at load time
-        marker.bindPopup(() => {
-          const schoolList = point.schools
-            .map(s => `<li><b>${s.name}</b> <span class="popup-school-type">(${TYPE_LABELS[s.type] || s.type})</span></li>`)
-            .join('');
-          return `
-            <b>${street}</b>${city ? `<br><span class="popup-addr">${city}</span>` : ''}
-            <ul style="margin:6px 0 0;padding-left:16px;font-size:12px">${schoolList}</ul>
-          `;
-        });
-
-        marker.addTo(map);
-        allMarkers.push({ marker, point });
-      }
-
-      if (i < addresses.length) {
-        const pct = (i / addresses.length * 100).toFixed(1);
-        loaderText.textContent = `Loading ${i.toLocaleString()} / ${addresses.length.toLocaleString()} addresses…`;
-        progressBar.style.width = `${pct}%`;
-        requestAnimationFrame(processChunk);
-      } else {
-        progressBar.style.width = '100%';
-        // Restore state from URL hash before initial render
-        const params = new URLSearchParams(window.location.hash.slice(1));
-        const hashColorBy = params.get('colorBy');
-        const hashSchool  = params.get('school');
-        const hashType    = params.get('type');
-        const hashBasemap = params.get('basemap');
-        const hashPins    = params.get('pins');
-        if (hashColorBy && ['ELEM', 'MIDD', 'HIGH'].includes(hashColorBy)) {
-          currentColorBy = hashColorBy;
-          document.getElementById('colorBy').value = hashColorBy;
-        }
-        if (hashSchool) {
-          currentSchoolFilter = hashSchool;
-          document.getElementById('schoolFilter').value = hashSchool;
-        } else if (hashType) {
-          currentTypeFilter = hashType;
-          document.getElementById('typeFilter').value = hashType;
-        }
-        if (hashBasemap && basemaps[hashBasemap]) {
-          map.removeLayer(currentBasemap);
-          currentBasemapKey = hashBasemap;
-          currentBasemap = basemaps[currentBasemapKey];
-          currentBasemap.addTo(map);
-          document.getElementById('basemapSelect').value = currentBasemapKey;
-          document.body.classList.toggle('dark-basemap', currentBasemapKey === 'dark');
-        }
-        if (hashPins) {
-          currentPins = hashPins;
-          document.getElementById('schoolPins').value = hashPins;
-          updateSchoolPins(hashPins);
-        }
-        recolor();
-        updateStatus();
-        document.getElementById('loader').style.display = 'none';
-      }
-    }
-
-    requestAnimationFrame(processChunk);
-  })
-  .catch(err => {
-    console.error('Error loading data:', err);
-    document.getElementById('loader').style.display = 'none';
-  });
+  if (hashYear && DATA_CONFIGS[hashYear]) {
+    currentYear = hashYear;
+    document.querySelectorAll('.year-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.year === hashYear);
+    });
+  }
+  if (hashColorBy && ['ELEM', 'MIDD', 'HIGH'].includes(hashColorBy)) {
+    currentColorBy = hashColorBy;
+    document.getElementById('colorBy').value = hashColorBy;
+  }
+  if (hashSchool) {
+    currentSchoolFilter = hashSchool;
+    // schoolFilter dropdown is synced after buildSchoolDropdown inside loadData
+  } else if (hashType) {
+    currentTypeFilter = hashType;
+    document.getElementById('typeFilter').value = hashType;
+  }
+  if (hashBasemap && basemaps[hashBasemap]) {
+    map.removeLayer(currentBasemap);
+    currentBasemapKey = hashBasemap;
+    currentBasemap = basemaps[currentBasemapKey];
+    currentBasemap.addTo(map);
+    document.getElementById('basemapSelect').value = currentBasemapKey;
+    document.body.classList.toggle('dark-basemap', currentBasemapKey === 'dark');
+  }
+  if (hashPins) {
+    currentPins = hashPins;
+    document.getElementById('schoolPins').value = hashPins;
+  }
+}
+loadData(currentYear);
 
 // --------------------
 // ADDRESS SEARCH
@@ -523,9 +610,14 @@ function selectAddress(point) {
     })
   }).addTo(map);
 
+  // Sort schools by grade level so the sidebar always reads ELEM → MIDD → HIGH
+  const sortedSchools = [...point.schools].sort(
+    (a, b) => TYPE_PRIORITY.indexOf(a.type) - TYPE_PRIORITY.indexOf(b.type)
+  );
+
   // Place a marker at each assigned school's physical location
   const boundsPoints = [[point.lat, point.lng]];
-  point.schools.forEach(s => {
+  sortedSchools.forEach(s => {
     const school = schoolsByName[s.name];
     if (!school) return;
     const marker = L.marker([school.lat, school.lng], {
@@ -544,7 +636,7 @@ function selectAddress(point) {
   }
 
   // Show school info panel
-  const schoolItems = point.schools
+  const schoolItems = sortedSchools
     .map(s => `<li><b>${s.name}</b> <span class="school-type">(${s.type})</span></li>`)
     .join('');
 
@@ -554,8 +646,11 @@ function selectAddress(point) {
     <div class="info-address">${addrStreet}${addrCity ? `<br><span class="info-city">${addrCity}</span>` : ''}</div>
     <ul>${schoolItems}</ul>
   `;
+  // Filter map markers to show only addresses sharing a zone with this address
+  searchZoneSchoolNames = new Set(sortedSchools.map(s => s.name));
   searchInfo.style.display = 'block';
   updateClearBtn();
+  withLoader('Highlighting zones…', applyFilters);
 
   // On mobile, collapse the sidebar so the map result is immediately visible
   if (window.innerWidth < 768 && controls.classList.contains('open')) {
@@ -626,6 +721,36 @@ document.getElementById('schoolPins').addEventListener('change', e => {
   syncHash();
 });
 
+document.querySelectorAll('.year-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    if (tab.dataset.year === currentYear) return;
+    document.querySelectorAll('.year-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentYear         = tab.dataset.year;
+    currentSchoolFilter = '';
+    currentTypeFilter   = '';
+    currentColorBy      = 'ELEM';
+    currentPins         = '';
+    searchZoneSchoolNames = null;
+    document.getElementById('colorBy').value      = 'ELEM';
+    document.getElementById('typeFilter').value   = '';
+    document.getElementById('schoolFilter').value = '';
+    document.getElementById('schoolPins').value   = '';
+    document.getElementById('searchInput').value  = '';
+    document.getElementById('searchResults').style.display = 'none';
+    document.getElementById('searchInfo').innerHTML        = '';
+    document.getElementById('searchInfo').style.display    = 'none';
+    document.getElementById('schoolInfoStrip').style.display = 'none';
+    document.getElementById('schoolInfoStrip').innerHTML   = '';
+    clearSearchMarker();
+    clearSchoolMarkers();
+    clearFilterSchoolMarker();
+    updateClearBtn();
+    syncHash();
+    loadData(currentYear);
+  });
+});
+
 function updateClearBtn() {
   const active = searchMarker || currentSchoolFilter || currentTypeFilter || currentColorBy !== 'ELEM';
   document.getElementById('clearAllBtn').style.display = active ? '' : 'none';
@@ -633,11 +758,12 @@ function updateClearBtn() {
 
 function syncHash() {
   const parts = [];
-  if (currentSchoolFilter)      parts.push('school='  + encodeURIComponent(currentSchoolFilter));
-  if (currentTypeFilter)        parts.push('type='    + encodeURIComponent(currentTypeFilter));
-  if (currentColorBy !== 'ELEM') parts.push('colorBy=' + currentColorBy);
-  if (currentBasemapKey !== 'osm') parts.push('basemap=' + currentBasemapKey);
-  if (currentPins)              parts.push('pins='   + encodeURIComponent(currentPins));
+  if (currentYear !== 'current')    parts.push('year='    + currentYear);
+  if (currentSchoolFilter)          parts.push('school='  + encodeURIComponent(currentSchoolFilter));
+  if (currentTypeFilter)            parts.push('type='    + encodeURIComponent(currentTypeFilter));
+  if (currentColorBy !== 'ELEM')    parts.push('colorBy=' + currentColorBy);
+  if (currentBasemapKey !== 'osm')  parts.push('basemap=' + currentBasemapKey);
+  if (currentPins)                  parts.push('pins='    + encodeURIComponent(currentPins));
   if (parts.length) {
     history.replaceState(null, '', '#' + parts.join('&'));
   } else {
@@ -647,6 +773,7 @@ function syncHash() {
 
 function resetAll() {
   history.replaceState(null, '', window.location.pathname + window.location.search);
+  searchZoneSchoolNames = null;
   searchInput.value = '';
   searchResults.style.display = 'none';
   searchInfo.innerHTML = '';
@@ -731,6 +858,23 @@ function buildLegend() {
  * @param {string[]} names - Alphabetically sorted list of unique school names
  *   derived from the loaded address dataset.
  */
+/**
+ * Shows or hides type-specific options in the "Map by type" and "Map school
+ * locations" dropdowns based on which types actually exist in the loaded data.
+ * Prevents dead-end selections (e.g. K8 or Online) when those types are absent
+ * from the active dataset.
+ *
+ * @param {Set<string>} availableTypes - School type codes present in the dataset.
+ */
+function syncTypeOptions(availableTypes) {
+  ['typeFilter', 'schoolPins'].forEach(id => {
+    document.getElementById(id).querySelectorAll('option').forEach(opt => {
+      if (!opt.value || opt.value === 'ALL') return;
+      opt.hidden = !availableTypes.has(opt.value);
+    });
+  });
+}
+
 function buildSchoolDropdown(names) {
   const sel = document.getElementById('schoolFilter');
   names.forEach(name => {
@@ -815,6 +959,10 @@ function applyFilters() {
 
     if (currentSchoolFilter) {
       visible = point.schools.some(s => s.name === currentSchoolFilter);
+    }
+
+    if (searchZoneSchoolNames) {
+      visible = visible && point.schools.some(s => searchZoneSchoolNames.has(s.name));
     }
 
     if (visible) {

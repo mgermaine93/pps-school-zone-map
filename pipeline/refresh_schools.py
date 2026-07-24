@@ -21,16 +21,12 @@ from phonenumbers import PhoneNumberFormat
 
 import aiohttp
 
-PORTAL_URL = "https://app.guidek12.com/pittsburghpa/school_search/current/"
-API_URL    = "https://app.guidek12.com/pittsburghpa/school_search/current/api.json"
+BASE = "https://app.guidek12.com/pittsburghpa/school_search/"
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Content-Type": "application/json; charset=UTF-8",
-    "Origin": "https://app.guidek12.com",
-    "Referer": PORTAL_URL,
-    "X-Requested-With": "XMLHttpRequest",
-}
+
+def _urls(year: str) -> tuple[str, str]:
+    portal = f"{BASE}{year}/"
+    return portal, f"{portal}api.json"
 
 
 def fmt_time(value) -> str:
@@ -140,10 +136,10 @@ def normalize(raw: list[dict]) -> list[dict]:
     return sorted(schools, key=lambda s: s["name"])
 
 
-async def fetch(output_path: str) -> None:
+async def fetch(output_path: str, year: str = "current") -> None:
     """
-    Fetches the current school list from the GuideK12 API and writes it to
-    disk.
+    Fetches the school list for the given year from the GuideK12 API and
+    writes it to disk.
 
     Performs a session-seeding GET to the GuideK12 portal first to acquire
     session cookies, then POSTs a 'list_schools' request to the JSON API.
@@ -161,13 +157,23 @@ async def fetch(output_path: str) -> None:
     Args:
         output_path: Destination path for the normalized schools.json file.
             Parent directories are created automatically.
+        year: GuideK12 school year slug, e.g. 'current' or '2027'.
+            Determines which portal URL is used. Defaults to 'current'.
     """
-    async with aiohttp.ClientSession(headers=HEADERS) as session:
-        async with session.get(PORTAL_URL) as resp:
+    portal_url, api_url = _urls(year)
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "Content-Type": "application/json; charset=UTF-8",
+        "Origin": "https://app.guidek12.com",
+        "Referer": portal_url,
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    async with aiohttp.ClientSession(headers=headers) as session:
+        async with session.get(portal_url) as resp:
             await resp.text()
 
         payload = {"mode": "list_schools"}
-        async with session.post(API_URL, json=payload) as resp:
+        async with session.post(api_url, json=payload) as resp:
             text = await resp.text()
 
         try:
@@ -213,10 +219,12 @@ def main() -> None:
     runs fetch() via asyncio.run().  Intended for standalone use and debugging;
     the pipeline normally calls fetch() directly via step_refresh_schools().
     """
-    parser = argparse.ArgumentParser(description="Refresh data/schools.json from GuideK12")
-    parser.add_argument("--output", "-o", default="data/schools.json")
+    parser = argparse.ArgumentParser(description="Refresh data/2027-schools.json from GuideK12")
+    parser.add_argument("--output", "-o", default="data/2027-schools.json")
+    parser.add_argument("--year", "-y", default="current",
+                        help="GuideK12 school year slug (default: current). Use e.g. '2027' for future data.")
     args = parser.parse_args()
-    asyncio.run(fetch(args.output))
+    asyncio.run(fetch(args.output, year=args.year))
 
 
 if __name__ == "__main__":
