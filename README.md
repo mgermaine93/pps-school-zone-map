@@ -16,6 +16,7 @@ Ultimately, this project aims to make school boundary information more transpare
 
 ## How to use
 
+- **School year** — toggle between current school assignments and projected 2027–28 assignments using the tabs at the top of the sidebar. The 2027–28 dataset reflects planned school consolidations and closures taking effect for the 2027–28 school year.
 - **Click a point** — view detailed school assignments for that specific address.
 - **Search address** — type an address to zoom to it and see its school assignments.
 - **Map by type** — map address zones for a given school level.
