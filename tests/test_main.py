@@ -76,4 +76,4 @@ def test_git_push_skip_env_var(monkeypatch):
     monkeypatch.setenv("SKIP_GIT_PUSH", "1")
     # If the function tries to run git it will raise FileNotFoundError on a
     # path that doesn't exist — the absence of any exception confirms the early exit.
-    git_push_changes(logger)
+    git_push_changes(logger, {})
