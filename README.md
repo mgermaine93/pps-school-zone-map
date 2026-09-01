@@ -112,4 +112,4 @@ View the source code on [GitHub](https://github.com/mgermaine93/pps-school-zone-
 
 [https://mgermaine93.github.io/pps-school-zone-map/](https://mgermaine93.github.io/pps-school-zone-map/)
 
-Data last updated: May 2026.
+Data last updated: September 2026.
